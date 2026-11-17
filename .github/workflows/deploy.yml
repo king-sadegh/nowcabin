@@ -1,0 +1,52 @@
+name: Deploy NoKabin to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy via SSH & Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Iran VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+
+            if [ -d /opt/nokabin ]; then
+              cd /opt/nokabin
+            elif [ -d /root/karami ]; then
+              cd /root/karami
+            elif [ -d "$HOME/karami" ]; then
+              cd "$HOME/karami"
+            else
+              git clone https://github.com/king-sadegh/karami.git /opt/nokabin
+              cd /opt/nokabin
+            fi
+
+            git fetch origin main
+            git reset --hard origin/main
+            chmod +x deploy.sh
+            bash deploy.sh
+
+            echo "Waiting for health check..."
+            for i in $(seq 1 15); do
+              if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+                echo "Health check passed!"
+                exit 0
+              fi
+              sleep 2
+            done
+
+            echo "Health check failed!"
+            exit 1

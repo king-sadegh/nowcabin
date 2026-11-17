@@ -56,3 +56,12 @@ chmod +x deploy.sh
 2. وارد تنظیمات سایت شوید و در بخش **Reverse Proxy -> Add Reverse Proxy**:
    - **Target URL:** `http://127.0.0.1:3000`
 3. همچنین می‌توانید از فایل آماده `nginx/nokabin.conf` استفاده کنید و از بخش **SSL** پنل aaPanel گواهی رایگان Let's Encrypt را فعال نمایید.
+
+### ۴. فعال‌سازی دیپلوی خودکار با GitHub Actions
+فایل `.github/workflows/deploy.yml` آماده است. برای فعال‌سازی:
+1. در مخزن گیت‌هاب وارد **Settings → Secrets and variables → Actions** شوید.
+2. با زدن **New repository secret** این سه مقدار را اضافه کنید:
+   - `VPS_HOST`: آی‌پی سرور (`87.248.130.21`)
+   - `VPS_USER`: نام کاربری (`root`)
+   - `VPS_PASSWORD`: رمز عبور جدید سرور
+3. از این پس با هر `push` روی شاخه `main`، سرور به‌صورت خودکار آپدیت و ری‌استارت می‌شود.
