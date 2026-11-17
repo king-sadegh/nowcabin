@@ -3,11 +3,18 @@ set -euo pipefail
 
 echo "=== NoKabin VPS Setup & Deploy Script ==="
 
-# 1. Update packages & install git/curl if needed
-apt-get update -y
-apt-get install -y curl git ca-certificates
+# 1. Install git/curl only if missing
+if ! command -v curl >/dev/null 2>&1 || ! command -v git >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y && apt-get install -y curl git ca-certificates
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y curl git ca-certificates
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y curl git ca-certificates
+  fi
+fi
 
-# 2. Install Docker & Docker Compose plugin if not present
+# 2. Install Docker if not present
 if ! command -v docker >/dev/null 2>&1; then
   echo "Installing Docker..."
   curl -fsSL https://get.docker.com | sh
@@ -24,8 +31,15 @@ fi
 
 mkdir -p data uploads
 
-# 4. Build and launch Docker container
-docker compose up -d --build
+# 4. Build and launch Docker container (supports both v2 plugin and v1 binary)
+if docker compose version >/dev/null 2>&1; then
+  docker compose up -d --build
+elif command -v docker-compose >/dev/null 2>&1; then
+  docker-compose up -d --build
+else
+  echo "ERROR: Neither 'docker compose' nor 'docker-compose' was found."
+  exit 1
+fi
 
 echo ""
 echo "=== NoKabin is running on http://$(hostname -I | awk '{print $1}'):3000 ==="
