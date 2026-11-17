@@ -69,28 +69,62 @@ window.NoKabin = (() => {
   function initBeforeAfterSliders(root = document) {
     const sliders = root.querySelectorAll('[data-ba-slider]');
     sliders.forEach((slider) => {
+      slider.setAttribute('dir', 'ltr');
+      slider.style.direction = 'ltr';
+
       const range = slider.querySelector('.ba-range');
       const afterLayer = slider.querySelector('.ba-after-layer');
       const divider = slider.querySelector('.ba-divider');
       const handle = slider.querySelector('.ba-handle');
       if (!range || !afterLayer || !divider || !handle) return;
 
+      range.setAttribute('dir', 'ltr');
+      range.style.direction = 'ltr';
+
       const update = (val) => {
         const pct = Math.max(0, Math.min(100, Number(val)));
+        range.value = pct;
         afterLayer.style.clipPath = `inset(0 0 0 ${pct}%)`;
         divider.style.left = `${pct}%`;
         handle.style.left = `${pct}%`;
       };
 
-      range.addEventListener('input', (e) => update(e.target.value));
+      const updateFromClientX = (clientX) => {
+        const rect = slider.getBoundingClientRect();
+        if (!rect.width) return;
+        const pct = ((clientX - rect.left) / rect.width) * 100;
+        update(pct);
+      };
+
+      range.addEventListener('input', (e) => {
+        e.stopPropagation();
+        update(e.target.value);
+      });
+
+      let dragging = false;
+      slider.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        updateFromClientX(e.clientX);
+      });
+      window.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        updateFromClientX(e.clientX);
+      });
+      window.addEventListener('pointerup', () => {
+        dragging = false;
+      });
+      window.addEventListener('pointercancel', () => {
+        dragging = false;
+      });
+
       update(range.value || 50);
 
       const wrapper = slider.closest('.ba-wrapper, .gallery-card');
       if (wrapper) {
         wrapper.querySelectorAll('[data-ba-set]').forEach((btn) => {
           btn.addEventListener('click', () => {
-            range.value = btn.getAttribute('data-ba-set');
-            update(range.value);
+            const targetVal = btn.getAttribute('data-ba-set');
+            update(targetVal);
           });
         });
       }

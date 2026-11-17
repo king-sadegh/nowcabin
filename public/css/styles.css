@@ -500,6 +500,7 @@ textarea {
   user-select: none;
   touch-action: pan-y;
   background: #e5ddd0;
+  direction: ltr;
 }
 
 .ba-slider img {
@@ -560,6 +561,7 @@ textarea {
   opacity: 0;
   cursor: ew-resize;
   z-index: 6;
+  direction: ltr;
 }
 
 .ba-badge {
@@ -572,6 +574,7 @@ textarea {
   z-index: 3;
   pointer-events: none;
   backdrop-filter: blur(6px);
+  direction: rtl;
 }
 
 .ba-badge.before {
@@ -945,6 +948,94 @@ textarea {
   color: var(--accent-gold-light);
 }
 
+/* Custom Color Swatch Palette (کالیته رنگ دلخواه) */
+.palette-box {
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-top: 12px;
+}
+
+.palette-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.palette-header strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.palette-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.palette-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-medium);
+  background: #fff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.palette-chip:hover {
+  border-color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+.palette-chip.active {
+  background: var(--bg-espresso);
+  color: #fff;
+  border-color: var(--accent-gold);
+}
+
+.palette-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.custom-color-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1.5px dashed var(--accent-gold-dark);
+  background: var(--accent-gold-soft);
+  color: var(--accent-gold-dark);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.custom-color-input {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
 /* Studio Left Preview Card */
 .studio-preview-card {
   position: sticky;
@@ -957,7 +1048,7 @@ textarea {
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .studio-preview-frame {
@@ -970,11 +1061,17 @@ textarea {
   background: #1a1512;
 }
 
-.studio-preview-frame img {
+.studio-preview-frame img,
+.studio-preview-canvas {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
   transition: opacity 0.25s ease;
+}
+
+.studio-preview-canvas {
+  cursor: crosshair;
 }
 
 .studio-preview-badge {
@@ -989,6 +1086,7 @@ textarea {
   font-size: 0.78rem;
   font-weight: 800;
   backdrop-filter: blur(6px);
+  z-index: 4;
 }
 
 .studio-compare-toggle {
@@ -1008,12 +1106,50 @@ textarea {
   gap: 6px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
   transition: var(--transition);
+  z-index: 4;
 }
 
 .studio-compare-toggle:hover {
   background: var(--accent-gold);
   color: #fff;
   border-color: var(--accent-gold);
+}
+
+.user-photo-pill {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(243, 212, 156, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7f3ec;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.user-photo-pill.active,
+.user-photo-pill:hover {
+  background: var(--accent-gold);
+  color: #fff;
+  border-color: var(--accent-gold-light);
+}
+
+.calibration-hint {
+  font-size: 0.76rem;
+  color: var(--accent-gold-light);
+  background: rgba(181, 137, 70, 0.16);
+  border: 1px dashed rgba(243, 212, 156, 0.38);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  line-height: 1.55;
+  display: none;
+}
+
+.calibration-hint.visible {
+  display: block;
 }
 
 .studio-preview-meta h3 {
