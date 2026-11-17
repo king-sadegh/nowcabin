@@ -3,14 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>نوکابین | بازسازی تخصصی کابینت بدون تعویض با یک‌دهم هزینه</title>
-  <meta name="description" content="بازسازی و تغییر رنگ کابینت آشپزخانه بدون تخریب و تعویض با رنگ پلی‌اورتان غیرکوره‌ای در ۱۵ روز، با یک‌دهم هزینه تعویض (۷۰ در مقابل ۷۰۰ میلیون تومان)." />
+  <title>نوکابین | بازسازی تخصصی کابینت بدون تعویض + استودیو هوش مصنوعی</title>
+  <meta name="description" content="بازسازی و نوسازی کابینت‌های قدیمی با رنگ پلی‌اورتان غیرکوره‌ای، یک‌دهم هزینه تعویض (۷۰ میلیون در مقابل ۷۰۰ میلیون تومان) و تحویل در ۱۵ روز کاری به همراه استودیو طراحی هوش مصنوعی." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
+
+  <!-- Dynamic Referral Discount Banner -->
+  <div id="agentBanner" class="agent-banner">
+    <div class="container banner-inner">
+      <i class="fa-solid fa-gift"></i>
+      <span>تبریک! شما با معرفی مشاور املاک (<strong id="agentCodeDisplay" class="ltr"></strong>) وارد شده‌اید؛ <strong>۲,۰۰۰,۰۰۰ تومان تخفیف مستقیم</strong> روی فاکتور شما فعال شد.</span>
+    </div>
+  </div>
+
+  <!-- Header -->
   <header class="site-header">
     <div class="container header-inner">
       <a href="/" class="brand">
@@ -22,458 +33,976 @@
       </a>
 
       <ul class="nav-links">
-        <li><a href="#comparison">مقایسه هزینه</a></li>
-        <li><a href="#process">مراحل اجرا</a></li>
+        <li><a href="#ai-studio" class="active"><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-gold); margin-left: 4px;"></i>استودیو هوش مصنوعی</a></li>
+        <li><a href="#estimator">تخمین آنلاین</a></li>
         <li><a href="/changes.html">مشاهده تغییرات واقعی</a></li>
+        <li><a href="#comparison">مقایسه</a></li>
         <li><a href="#inspection">بازدید رایگان</a></li>
         <li><a href="#agents">مشاورین املاک</a></li>
       </ul>
 
       <div class="header-actions">
         <a href="tel:+989225603574" class="btn btn-outline btn-sm hide-sm">
-          تماس: <span class="ltr">+989225603574</span>
+          <i class="fa-solid fa-phone-volume"></i>
+          <span class="ltr">+989225603574</span>
         </a>
         <a href="/panel.html" class="btn btn-primary btn-sm" id="headerPanelBtn">ورود / پنل کاربری</a>
-        <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="منو">منو</button>
+        <button type="button" class="mobile-menu-btn" id="mobileMenuBtn">منو</button>
       </div>
     </div>
 
     <div class="mobile-drawer" id="mobileDrawer">
-      <a href="#comparison">مقایسه هزینه (۷۰ در مقابل ۷۰۰ میلیون)</a>
-      <a href="#process">مراحل اجرا در ۱۵ روز</a>
+      <a href="#ai-studio">استودیو هوش مصنوعی (آپلود ۳ عکس)</a>
+      <a href="#estimator">تخمین آنلاین هزینه</a>
       <a href="/changes.html">مشاهده تغییرات واقعی</a>
+      <a href="#comparison">مقایسه بازسازی و تعویض</a>
+      <a href="#process">مراحل اجرا</a>
       <a href="#inspection">درخواست بازدید و کارشناسی رایگان</a>
       <a href="#agents">همکاری با مشاورین املاک</a>
-      <a href="/panel.html">ورود / پنل مشتری، مشاور و مدیریت</a>
-      <a href="tel:+989225603574">تلفن هماهنگی: <span class="ltr">+989225603574</span></a>
+      <a href="/panel.html">ورود / ثبت‌نام پنل کاربری (OTP)</a>
     </div>
   </header>
 
-  <main>
-    <!-- Hero -->
-    <section class="hero">
-      <div class="container hero-grid">
-        <div>
-          <span class="hero-kicker">بازسازی تخصصی بدون تخریب — تحویل در ۱۵ روز</span>
-          <h1>بازسازی کابینت‌های قدیمی بدون تعویض، با یک‌دهم هزینه</h1>
-          <p class="hero-desc">
-            بدون نیاز به کوبیدن آشپزخانه و تغییر چیدمان یا طرح درب‌ها؛ با زیرسازی اصولی و اجرای
-            <strong>رنگ پلی‌اورتان (غیرکوره‌ای)</strong>، کابینت‌های فعلی شما را در <strong>۱۵ روز</strong> کاملاً نو و چشم‌نواز تحویل می‌دهیم.
-          </p>
-
-          <div class="hero-actions">
-            <a href="#inspection" class="btn btn-primary">درخواست بازدید و کارشناسی رایگان</a>
-            <a href="/changes.html" class="btn btn-gold">مشاهده تغییرات واقعی</a>
-          </div>
-
-          <div class="hero-stats">
-            <div class="hero-stat">
-              <strong>۷۰ در مقابل ۷۰۰ میلیون</strong>
-              <span>یک‌دهم هزینه تعویض کامل</span>
-            </div>
-            <div class="hero-stat">
-              <strong>۱۵ روز کاری</strong>
-              <span>زمان تحویل پروژه</span>
-            </div>
-            <div class="hero-stat">
-              <strong>پلی‌اورتان غیرکوره‌ای</strong>
-              <span>رنگ صنعتی یکدست و بادوام</span>
-            </div>
-          </div>
+  <!-- 1. Hero Section (nocabin.zip Layout + Warm Espresso/Gold Palette) -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <div class="hero-kicker">
+          <i class="fa-solid fa-sparkles"></i>
+          <span>نوسازی تخصصی با رنگ پلی‌اورتان غیرکوره‌ای + پیش‌نمایش هوش مصنوعی</span>
         </div>
 
-        <!-- Realistic Before/After Frontal Slider -->
-        <div class="ba-wrapper">
-          <div class="ba-slider" data-ba-slider>
-            <img src="/assets/before-1.jpg" alt="کابینت قدیمی قبل از بازسازی نوکابین" />
-            <div class="ba-after-layer">
-              <img src="/assets/after-1.jpg" alt="همان کابینت بعد از رنگ‌آمیزی پلی‌اورتان غیرکوره‌ای بدون تغییر چیدمان و طرح درب" />
-            </div>
-            <span class="ba-badge before">قبل از بازسازی</span>
-            <span class="ba-badge after">بعد از بازسازی</span>
-            <div class="ba-divider"></div>
-            <div class="ba-handle" aria-hidden="true">⇄</div>
-            <input type="range" min="0" max="100" value="50" class="ba-range" aria-label="مقایسه قبل و بعد کابینت" />
-          </div>
-          <div class="ba-controls">
-            <span class="ba-caption">چیدمان و طرح درب‌ها ثابت است — فقط رنگ‌آمیزی پلی‌اورتان غیرکوره‌ای</span>
-            <div class="ba-quick-btns">
-              <button type="button" data-ba-set="0">مشاهده بعد</button>
-              <button type="button" data-ba-set="50">۵۰ / ۵۰</button>
-              <button type="button" data-ba-set="100">مشاهده قبل</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+        <h1>
+          آشپزخانه رویایی شما،<br />
+          <span class="highlight">بدون تخریب و با یک‌دهم هزینه تعویض!</span>
+        </h1>
 
-    <!-- Cost Comparison Section -->
-    <section class="section" id="comparison">
-      <div class="container">
-        <div class="section-header">
-          <h2>چرا بازسازی با یک‌دهم هزینه منطقی‌تر از تعویض است؟</h2>
-          <p>مقایسه شفاف هزینه، زمان و دردسر اجرایی بین تعویض کامل کابینت و بازسازی تخصصی در نوکابین</p>
+        <p class="hero-desc">
+          <strong>عکس آشپزخانه‌تون رو بفرستید؛ بررسی می‌کنیم ببینیم بازسازی برای شما به‌صرفه هست یا نه.</strong>
+          اگر اسکلت کابینت‌های شما سالم است، نیازی به هزینه <strong>۷۰۰ میلیون تومانی</strong> برای تعویض کامل نیست. ما در <strong>نوکابین</strong> همان کابینت‌ها را با هزینه حدود <strong>۷۰ میلیون تومان (یک‌دهم هزینه تعویض)</strong> و با <strong>رنگ پلی‌اورتان غیرکوره‌ای</strong> در کارگاه ایزوله طی <strong>۱۵ روز</strong> نوسازی می‌کنیم.
+        </p>
+
+        <div class="hero-cta-row">
+          <a href="#ai-studio" class="btn btn-primary btn-lg">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            آپلود ۳ عکس و تست هوش مصنوعی
+          </a>
+          <a href="/changes.html" class="btn btn-gold btn-lg">
+            <i class="fa-solid fa-images"></i>
+            مشاهده تغییرات واقعی
+          </a>
+          <a href="#inspection" class="btn btn-outline">
+            درخواست بازدید رایگان
+          </a>
         </div>
 
-        <div class="compare-grid">
-          <div class="compare-card old">
-            <span class="tag">روش سنتی (تخریب و ساخت نو)</span>
-            <div class="compare-price">حدود ۷۰۰ میلیون تومان</div>
-            <p style="color: var(--text-secondary); font-size: 0.92rem;">برای یک آشپزخانه استاندارد با مصالح و یراق‌آلات جدید</p>
-            <ul class="compare-list">
-              <li>✕ هزینه بسیار سنگین بدنه، صفحه، نصب و حمل‌ونقل</li>
-              <li>✕ تخریب، سروصدا و از کار افتادن آشپزخانه تا ۴۵ روز</li>
-              <li>✕ نیاز به تغییر لوله‌کشی، برق و کاشی بین کابینتی</li>
-              <li>✕ اسقاط شدن اسکلت سالم کابینت‌های قبلی</li>
-            </ul>
-          </div>
-
-          <div class="compare-card highlight">
-            <span class="tag olive">روش نوکابین (بازسازی بدون تعویض)</span>
-            <div class="compare-price">حدود ۷۰ میلیون تومان</div>
-            <p style="color: var(--text-secondary); font-size: 0.92rem;">یک‌دهم هزینه تعویض کامل — یعنی ۹۰٪ صرفه‌جویی واقعی</p>
-            <ul class="compare-list">
-              <li>✓ صرفه‌جویی حدود ۶۳۰ میلیون تومان در هزینه کل آشپزخانه</li>
-              <li>✓ حفظ اسکلت سالم، چیدمان و طرح درب‌های فعلی</li>
-              <li>✓ اجرای تخصصی رنگ پلی‌اورتان (غیرکوره‌ای) با زیرسازی کامل</li>
-              <li>✓ تحویل کامل و تمیز پروژه در ۱۵ روز کاری</li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Interactive 1/10 Calculator -->
-        <div class="calc-box">
-          <div class="calc-slider-wrap">
-            <label for="metersRange" style="font-weight: 900; font-size: 1.05rem;">
-              محاسبه هوشمند صرفه‌جویی بر اساس متراژ کابینت شما:
-              <span id="metersDisplay" style="color: var(--accent-gold-dark);">۱۰ متر</span>
-            </label>
-            <input type="range" id="metersRange" min="6" max="24" value="10" />
-            <div style="display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-muted);">
-              <span>۶ متر (آشپزخانه کوچک)</span>
-              <span>۱۰ متر (استاندارد)</span>
-              <span>۲۴ متر (بزرگ)</span>
+        <div class="hero-trust">
+          <div class="trust-item">
+            <i class="fa-solid fa-percent"></i>
+            <div>
+              <strong>یک‌دهم هزینه تعویض</strong>
+              <span>۷۰ میلیون در برابر ۷۰۰ میلیون تومان</span>
             </div>
           </div>
-
-          <div class="calc-results">
-            <div class="calc-result-item">
-              <small>هزینه تقریبی بازسازی نوکابین</small>
-              <strong id="calcReno" style="color: var(--accent-olive);">۷۰ میلیون تومان</strong>
+          <div class="trust-item">
+            <i class="fa-regular fa-clock"></i>
+            <div>
+              <strong>تحویل در ۱۵ روز</strong>
+              <span>برنامه‌ریزی دقیق بدون معطلی</span>
             </div>
-            <div class="calc-result-item">
-              <small>هزینه تقریبی تعویض کامل</small>
-              <strong id="calcReplace" style="color: var(--accent-danger);">۷۰۰ میلیون تومان</strong>
-            </div>
-            <div class="calc-result-item savings">
-              <small>مبلغی که در جیب شما می‌ماند (نسبت یک‌دهم هزینه)</small>
-              <strong id="calcSavings" style="color: var(--accent-olive);">۶۳۰ میلیون تومان صرفه‌جویی</strong>
+          </div>
+          <div class="trust-item">
+            <i class="fa-solid fa-swatchbook"></i>
+            <div>
+              <strong>تأیید نمونه واقعی رنگ</strong>
+              <span>تست سمپل واقعی در نور آشپزخانه شما</span>
             </div>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- Process Section -->
-    <section class="section section-sand" id="process">
-      <div class="container">
-        <div class="section-header">
-          <h2>مراحل بازسازی کابینت در ۱۵ روز</h2>
-          <p>اجرای تمیز و مهندسی‌شده با رنگ پلی‌اورتان غیرکوره‌ای، بدون تخریب ساختار آشپزخانه</p>
-        </div>
-
-        <div class="steps-grid">
-          <div class="step-card">
-            <div class="step-num">۱</div>
-            <h3>بازدید و کارشناسی رایگان</h3>
-            <p>کارشناس نوکابین در محل حاضر می‌شود، سلامت بدنه و درب‌ها را بررسی کرده و کالیته رنگ را ارائه می‌دهد.</p>
+      <!-- Hero Realistic Frontal Before/After Slider -->
+      <div>
+        <div class="ba-card">
+          <div class="ba-stage" data-ba-slider>
+            <img src="/assets/after-1.jpg" alt="بعد از بازسازی کابینت با رنگ پلی‌اورتان غیرکوره‌ای" class="ba-img-after" />
+            <div class="ba-before-clip" style="width: 50%;">
+              <img src="/assets/before-1.jpg" alt="قبل از بازسازی کابینت چوبی قدیمی" class="ba-img-before" />
+            </div>
+            <div class="ba-handle" style="left: 50%;">
+              <div class="ba-handle-knob">⇔</div>
+            </div>
+            <span class="ba-badge before">قبل: کابینت چوبی قهوه‌ای قدیمی</span>
+            <span class="ba-badge after">بعد: پلی‌اورتان غیرکوره‌ای (گریژ گرم NP N 1864T)</span>
           </div>
-          <div class="step-card">
-            <div class="step-num">۲</div>
-            <h3>باز کردن درب‌ها و زیرسازی</h3>
-            <p>درب‌ها و نمای قابل جدا شدن باز شده و خط و خش‌ها، لب‌پریدگی‌ها و ناهمواری‌ها کاملاً ترمیم و سمباده می‌شوند.</p>
+          <div class="ba-caption">
+            <span>زاویه مستقیم روبه‌رو — چیدمان و طرح درب‌ها بدون تغییر، فقط رنگ‌آمیزی تخصصی پلی‌اورتان غیرکوره‌ای</span>
+            <a href="/changes.html" style="color: var(--accent-gold-dark); font-weight: 800;">مشاهده تغییرات واقعی ←</a>
           </div>
-          <div class="step-card">
-            <div class="step-num">۳</div>
-            <h3>رنگ پلی‌اورتان غیرکوره‌ای</h3>
-            <p>پوشش چندلایه رنگ پلی‌اورتان دوجزئی (غیرکوره‌ای) با ضخامت یکنواخت و مقاومت بالا در برابر رطوبت و چربی اجرا می‌شود.</p>
-          </div>
-          <div class="step-card">
-            <div class="step-num">۴</div>
-            <h3>نصب و تحویل در ۱۵ روز</h3>
-            <p>رگلاژ دقیق لولاها، نصب دستگیره‌ها و تحویل آشپزخانه‌ای کاملاً نوشده در موعد ۱۵ روزه انجام می‌گیرد.</p>
-          </div>
-        </div>
-
-        <div style="text-align: center; margin-top: 32px;">
-          <a href="/changes.html" class="btn btn-primary">مشاهده تغییرات واقعی پروژه‌های انجام‌شده</a>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- 1) Free Inspection Request Section (MUST come BEFORE Real Estate Agents section) -->
-    <section class="section" id="inspection">
-      <div class="container">
-        <div class="section-header">
-          <h2>درخواست بازدید و کارشناسی رایگان در محل</h2>
-          <p>مشخصات آشپزخانه و در صورت تمایل عکس کابینت‌های فعلی را ارسال کنید تا هماهنگی بازدید انجام شود</p>
-        </div>
+  <!-- 2. AI Kitchen Studio Section (3-Photo Upload + Interactive Preview Options) -->
+  <section class="section" id="ai-studio">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> استودیو هوشمند بازسازی نوکابین</span>
+        <h2>آپلود ۳ عکس از آشپزخانه و پیش‌نمایش تغییرات با هوش مصنوعی</h2>
+        <p>
+          حداکثر <strong>۳ عکس از زوایای مختلف آشپزخانه</strong> خود آپلود کنید تا هوش مصنوعی نوکابین کلیت فضا، اسکلت کابینت‌ها و نور محیط را تحلیل کند. سپس روی هر کدام از گزینه‌های زیر کلیک کنید تا <strong>پیش‌نمایش تصویری واقعی (Preview)</strong> آن را بلافاصله مشاهده کنید.
+        </p>
+      </div>
 
-        <div class="form-section-grid">
-          <form class="card" id="inspectionForm">
-            <div class="form-grid">
-              <div class="field">
-                <label for="inspName">نام و نام خانوادگی *</label>
-                <input type="text" id="inspName" name="fullName" required placeholder="مثال: علی کریمی" />
+      <div class="studio-shell">
+        <div class="studio-grid">
+          <!-- Right Column: 3-Photo Uploader + AI Analysis + Clickable Options -->
+          <div>
+            <div class="studio-step-title">
+              <span class="step-num">۱</span>
+              <span>آپلود حداکثر ۳ تصویر از آشپزخانه فعلی شما</span>
+            </div>
+
+            <div class="studio-upload-slots" id="studioSlotsGrid">
+              <!-- Slot 1 -->
+              <label class="studio-slot" data-slot-index="0">
+                <input type="file" accept="image/jpeg,image/png,image/webp" class="studio-slot-input" data-slot="0" hidden />
+                <div class="slot-icon"><i class="fa-solid fa-camera"></i></div>
+                <strong class="slot-title">عکس ۱: نمای روبه‌رو</strong>
+                <span class="slot-sub">کلیک برای انتخاب عکس</span>
+                <button type="button" class="slot-remove" data-remove-slot="0" title="حذف عکس" style="display: none;">×</button>
+              </label>
+
+              <!-- Slot 2 -->
+              <label class="studio-slot" data-slot-index="1">
+                <input type="file" accept="image/jpeg,image/png,image/webp" class="studio-slot-input" data-slot="1" hidden />
+                <div class="slot-icon"><i class="fa-solid fa-angles-left"></i></div>
+                <strong class="slot-title">عکس ۲: نمای زاویه / ال</strong>
+                <span class="slot-sub">کلیک برای انتخاب عکس</span>
+                <button type="button" class="slot-remove" data-remove-slot="1" title="حذف عکس" style="display: none;">×</button>
+              </label>
+
+              <!-- Slot 3 -->
+              <label class="studio-slot" data-slot-index="2">
+                <input type="file" accept="image/jpeg,image/png,image/webp" class="studio-slot-input" data-slot="2" hidden />
+                <div class="slot-icon"><i class="fa-solid fa-expand"></i></div>
+                <strong class="slot-title">عکس ۳: صفحه و بین‌کابینتی</strong>
+                <span class="slot-sub">کلیک برای انتخاب عکس</span>
+                <button type="button" class="slot-remove" data-remove-slot="2" title="حذف عکس" style="display: none;">×</button>
+              </label>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px;">
+              <button type="button" class="btn btn-primary" id="analyzeKitchenBtn">
+                <i class="fa-solid fa-microchip"></i>
+                تحلیل هوشمند آشپزخانه با هوش مصنوعی (<span id="uploadedCountBadge">۰</span>/۳ عکس)
+              </button>
+              <span style="font-size: 0.82rem; color: var(--text-secondary);">
+                حتی پیش از آپلود عکس هم می‌توانید گزینه‌های زیر را روی نمونه استاندارد تست کنید.
+              </span>
+            </div>
+
+            <!-- AI Analysis Output Box -->
+            <div class="ai-analysis-box" id="aiAnalysisBox">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <strong style="color: var(--accent-olive); font-size: 0.95rem;">
+                  <i class="fa-solid fa-circle-check"></i> گزارش هوش مصنوعی نوکابین از آشپزخانه شما:
+                </strong>
+                <span class="tag olive" id="aiScoreBadge">امتیاز صرفه اقتصادی بازسازی: ۹۴٪</span>
               </div>
-
-              <div class="field">
-                <label for="inspPhone">شماره همراه *</label>
-                <input type="tel" id="inspPhone" name="phone" class="ltr" required placeholder="09123456789" />
-              </div>
-
-              <div class="field">
-                <label for="inspDistrict">منطقه تهران *</label>
-                <select id="inspDistrict" name="district" required>
-                  <option value="شمال و شرق تهران">شمال و شرق تهران</option>
-                  <option value="مرکز تهران">مرکز تهران</option>
-                  <option value="غرب تهران">غرب تهران</option>
-                  <option value="جنوب و سایر مناطق تهران">جنوب و سایر مناطق تهران</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="inspMeters">متراژ حدودی کابینت (متر)</label>
-                <input type="number" id="inspMeters" name="estimatedMeters" min="3" max="60" value="10" />
-              </div>
-
-              <div class="field">
-                <label for="inspType">جنس / وضعیت کابینت فعلی</label>
-                <select id="inspType" name="cabinetType">
-                  <option value="ام‌دی‌اف / ملامینه قدیمی">ام‌دی‌اف / ملامینه قدیمی</option>
-                  <option value="چوب یا روکش چوب">چوب یا روکش چوب</option>
-                  <option value="های‌گلاس آسیب‌دیده یا زردشده">های‌گلاس آسیب‌دیده یا زردشده</option>
-                  <option value="وکیوم / ممبران پوسته‌شده">وکیوم / ممبران پوسته‌شده</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="inspReferrer">شماره همراه مشاور املاک معرفی‌کننده</label>
-                <input type="tel" id="inspReferrer" name="referrerPhone" class="ltr" placeholder="اختیاری — مثال: 09121112233" />
-              </div>
-
-              <div class="field full">
-                <div class="info-banner olive">
-                  تخفیف ویژه معرف: اگر توسط مشاور املاک یا معرف معرفی شوید و شماره همراه ایشان را وارد کنید،
-                  <strong>۲,۰۰۰,۰۰۰ تومان (۲ میلیون تومان) تخفیف</strong> مستقیم روی قرارداد بازسازی دریافت می‌کنید.
+              <div class="ai-analysis-grid" id="aiAnalysisGrid">
+                <div class="ai-stat">
+                  <small>وضعیت اسکلت و چیدمان تشخیص داده‌شده</small>
+                  <strong id="aiLayoutText">یونیت‌های هوایی و زمینی سالم — مناسب رنگ پلی‌اورتان غیرکوره‌ای</strong>
+                </div>
+                <div class="ai-stat">
+                  <small>پیشنهاد اول کد رنگ نیپون (Nippon Paint)</small>
+                  <strong id="aiColorText">بالا: گریژ روشن گرم (NP N 1864T) + پایین: گریژ متوسط (NP N 3026P)</strong>
+                </div>
+                <div class="ai-stat">
+                  <small>سیستم تأیید نمونه واقعی</small>
+                  <strong>ارائه سمپل واقعی رنگ در نور آشپزخانه شما قبل از شروع کار</strong>
+                </div>
+                <div class="ai-stat">
+                  <small>زمان تحویل و برآورد پایه</small>
+                  <strong>۱۵ روز کاری | یک‌دهم هزینه تعویض (حدود ۷۰ میلیون تومان)</strong>
                 </div>
               </div>
+            </div>
 
-              <div class="field full">
-                <label for="inspAddress">آدرس حدودی (محله / خیابان)</label>
-                <input type="text" id="inspAddress" name="address" placeholder="مثال: پاسداران، خیابان گلستان" />
-              </div>
+            <!-- Step 2: Select Cabinet Paint Colors -->
+            <div class="studio-step-title" style="margin-top: 18px;">
+              <span class="step-num">۲</span>
+              <span>انتخاب رنگ‌های مختلف کابینت (پلی‌اورتان غیرکوره‌ای) — برای مشاهده Preview کلیک کنید:</span>
+            </div>
 
-              <div class="field full">
-                <label for="inspNotes">توضیحات یا رنگ پیشنهادی شما</label>
-                <textarea id="inspNotes" name="notes" rows="2" placeholder="رنگ مورد نظر یا توضیحات تکمیلی..."></textarea>
-              </div>
-
-              <div class="field full">
-                <label>آپلود عکس کابینت فعلی (اختیاری — حداکثر ۵ عکس برای هر کاربر)</label>
-                <label class="upload-box" for="inspPhotos">
-                  <strong>برای انتخاب عکس‌های آشپزخانه کلیک کنید</strong>
-                  <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
-                    فرمت‌های مجاز: JPG، PNG، WebP (سقف مجاز هر کاربر: <span id="maxPhotosHint">۵</span> عکس)
+            <div class="studio-options-group">
+              <div class="studio-options-grid" id="studioColorOptions">
+                <button type="button" class="studio-option-btn active" data-option-id="color_greige">
+                  <span class="studio-swatch" style="background: linear-gradient(135deg, #d7cec2 50%, #9f9284 50%);"></span>
+                  <div class="studio-option-info">
+                    <strong>گریژ گرم دو رنگ (NP N 1864T)</strong>
+                    <small>پیشنهاد اول — هماهنگ با کاشی و صفحه گرم</small>
+                    <span class="studio-cost-pill">در پکیج پایه ۷۰ میلیون</span>
                   </div>
-                  <input type="file" id="inspPhotos" accept="image/jpeg,image/png,image/webp" multiple hidden />
-                </label>
-                <div class="preview-grid" id="inspPhotoPreviews"></div>
-              </div>
+                </button>
 
-              <div class="field full">
-                <button type="submit" class="btn btn-primary" style="width: 100%;" id="inspSubmitBtn">
-                  ثبت درخواست بازدید و کارشناسی رایگان
+                <button type="button" class="studio-option-btn" data-option-id="color_nordic">
+                  <span class="studio-swatch" style="background: #FAF8F5;"></span>
+                  <div class="studio-option-info">
+                    <strong>سفید گرم نوردیک (Ivory)</strong>
+                    <small>بزرگ‌تر و دلبازتر شدن آشپزخانه</small>
+                    <span class="studio-cost-pill">در پکیج پایه ۷۰ میلیون</span>
+                  </div>
+                </button>
+
+                <button type="button" class="studio-option-btn" data-option-id="color_sage">
+                  <span class="studio-swatch" style="background: linear-gradient(135deg, #f3efe6 45%, #4B5842 55%);"></span>
+                  <div class="studio-option-info">
+                    <strong>سبز زیتونی / سیج مات + بالا کرم</strong>
+                    <small>ترکیب اروپایی لوکس و مدرن</small>
+                    <span class="studio-cost-pill">+۲ میلیون تومان</span>
+                  </div>
+                </button>
+
+                <button type="button" class="studio-option-btn" data-option-id="color_smoky">
+                  <span class="studio-swatch" style="background: linear-gradient(135deg, #d9d2c7 45%, #5A5E63 55%);"></span>
+                  <div class="studio-option-info">
+                    <strong>طوسی اسموکی / زغالی + بالا گریژ</strong>
+                    <small>کنتراست شیک بدون تاریک شدن فضا</small>
+                    <span class="studio-cost-pill">+۲ میلیون تومان</span>
+                  </div>
                 </button>
               </div>
             </div>
-            <div id="inspFormMessage" style="margin-top: 14px;"></div>
-          </form>
 
-          <div style="display: flex; flex-direction: column; gap: 18px;">
-            <div class="card">
-              <h3 style="font-size: 1.15rem; font-weight: 900; margin-bottom: 10px;">ارتباط مستقیم با کارشناس هماهنگی</h3>
-              <p style="font-size: 0.92rem; color: var(--text-secondary); margin-bottom: 14px;">
-                برای مشاوره فوری، ارسال عکس از طریق پیام‌رسان یا تعیین زمان بازدید، با شماره زیر در تماس باشید:
+            <!-- Step 3: Structural & Surface Options (Island, Coffee Bar, Countertop, Backsplash) -->
+            <div class="studio-step-title" style="margin-top: 18px;">
+              <span class="step-num">۳</span>
+              <span>گزینه‌های ارتقای آشپزخانه (ساخت جزیره، کافی‌بار، صفحه کابینت و کاشی بین‌کابینتی):</span>
+            </div>
+
+            <div class="studio-options-group">
+              <div class="studio-options-grid" id="studioAddonOptions">
+                <button type="button" class="studio-option-btn" data-option-id="add_island">
+                  <span class="studio-swatch" style="background: #936c30; display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.85rem;">
+                    <i class="fa-solid fa-table-columns"></i>
+                  </span>
+                  <div class="studio-option-info">
+                    <strong>ساخت جزیره آشپزخانه</strong>
+                    <small>کانتر جزیره هم‌رنگ کابینت با صفحه سنگی</small>
+                    <span class="studio-cost-pill">+۲۴ میلیون تومان</span>
+                  </div>
+                </button>
+
+                <button type="button" class="studio-option-btn" data-option-id="add_coffeebar">
+                  <span class="studio-swatch" style="background: #6f4e1b; display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.85rem;">
+                    <i class="fa-solid fa-mug-hot"></i>
+                  </span>
+                  <div class="studio-option-info">
+                    <strong>ساخت کافی‌بار (Coffee Bar)</strong>
+                    <small>شلف چوبی، نور مخفی گرم و استیشن قهوه</small>
+                    <span class="studio-cost-pill">+۱۲ میلیون تومان</span>
+                  </div>
+                </button>
+
+                <button type="button" class="studio-option-btn" data-option-id="refinish_countertop">
+                  <span class="studio-swatch" style="background: #ede6da; display:flex; align-items:center; justify-content:center; color:#26201b; font-size:0.85rem;">
+                    <i class="fa-solid fa-layer-group"></i>
+                  </span>
+                  <div class="studio-option-info">
+                    <strong>رنگ کردن / نوسازی صفحه کابینت</strong>
+                    <small>طرح سنگ کوارتز سفید رگه‌دار گرم</small>
+                    <span class="studio-cost-pill">+۱۴ میلیون تومان</span>
+                  </div>
+                </button>
+
+                <button type="button" class="studio-option-btn" data-option-id="change_backsplash">
+                  <span class="studio-swatch" style="background: #d9cbb8; display:flex; align-items:center; justify-content:center; color:#26201b; font-size:0.85rem;">
+                    <i class="fa-solid fa-border-all"></i>
+                  </span>
+                  <div class="studio-option-info">
+                    <strong>تغییر کاشی بین‌کابینتی</strong>
+                    <small>اسلب ماربل گرم یکپارچه + لاین نوری</small>
+                    <span class="studio-cost-pill">+۱۶ میلیون تومان</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Left Column: Instant Realistic Photo Preview -->
+          <div class="studio-preview-card">
+            <div class="studio-preview-frame">
+              <img
+                src="/assets/studio-color-greige.jpg"
+                alt="پیش‌نمایش زنده تغییرات کابینت"
+                id="studioPreviewImg"
+              />
+              <div class="studio-preview-badge" id="studioPreviewBadge">
+                پیش‌نمایش: گریژ گرم دو رنگ (NP N 1864T + 3026P)
+              </div>
+              <button type="button" class="studio-compare-toggle" id="studioCompareToggleBtn">
+                <i class="fa-solid fa-eye"></i>
+                نمایش عکس قبل از بازسازی
+              </button>
+            </div>
+
+            <!-- User's Own Uploaded Thumbnails Strip (if uploaded) -->
+            <div id="userUploadedStrip" style="display: none; background: rgba(255,255,255,0.06); padding: 10px; border-radius: 10px;">
+              <div style="font-size: 0.78rem; color: #d8cebe; margin-bottom: 6px;">
+                <i class="fa-solid fa-images"></i> تصاویر آپلودشده آشپزخانه شما (برای مقایسه کلیک کنید):
+              </div>
+              <div id="userUploadedThumbs" style="display: flex; gap: 8px; overflow-x: auto;"></div>
+            </div>
+
+            <div class="studio-preview-meta">
+              <h3 id="studioPreviewTitle">گریژ گرم دو رنگ (کد نیپون NP N 1864T + 3026P)</h3>
+              <p id="studioPreviewDesc">
+                کابینت بالا گریژ روشن گرم + کابینت پایین گریژ متوسط — بهترین هماهنگی با صفحه و کاشی کرم/بژ و کف سنگ خاکستری بدون کوچک‌ترین تخریب.
               </p>
-              <a href="tel:+989225603574" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
-                تماس تلفنی: <span class="ltr">+989225603574</span>
-              </a>
-              <div class="contact-buttons">
-                <a href="https://wa.me/989225603574" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm" style="flex: 1;">
-                  واتس‌اپ (<span class="ltr">+989225603574</span>)
-                </a>
-                <a href="https://ble.ir/989225603574" target="_blank" rel="noopener" class="btn btn-bale btn-sm" style="flex: 1;" data-bale-link>
-                  پیام‌رسان بله (<span class="ltr">+989225603574</span>)
-                </a>
+              <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.12); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 0.84rem; color: #d4c7b6;">گزینه‌های انتخابی شما (<span id="selectedOptionsCount">۱</span> مورد):</span>
+                <strong style="font-size: 1.05rem; color: #f3d49c;" id="studioTotalEstimate">حدود ۷۰ میلیون تومان</strong>
               </div>
             </div>
 
-            <div class="card" style="background: var(--bg-sand);">
-              <h3 style="font-size: 1.05rem; font-weight: 900; margin-bottom: 8px;">پیگیری وضعیت و مدیریت عکس‌ها</h3>
-              <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 12px;">
-                پس از ثبت درخواست، می‌توانید با شماره همراه خود وارد پنل مشتری شوید و وضعیت سفارش، تخفیف ۲ میلیونی و عکس‌های آپلودشده را مدیریت کنید.
-              </p>
-              <a href="/panel.html?role=customer" class="btn btn-outline btn-sm">ورود به پنل مشتری</a>
-            </div>
+            <button type="button" class="btn btn-gold" style="width: 100%;" id="applyStudioToFormBtn">
+              <i class="fa-solid fa-check-double"></i>
+              ثبت این ترکیب و دریافت بازدید رایگان در محل
+            </button>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- 2) Real Estate Agents Collaboration Section (Placed AFTER Inspection Form) -->
-    <section class="section section-sand" id="agents">
-      <div class="container">
-        <div class="section-header">
-          <h2>مشاور املاک محترم، فایلهایی که کابینت های قدیمی دارند را به درآمد تبدیل کن!</h2>
-          <p>
-            با معرفی فایل‌های قدیمی به نوکابین، هم خریدار یا مالک از <strong>۲ میلیون تومان تخفیف ویژه معرف</strong> بهره‌مند می‌شود و هم پورسانت اختصاصی شما در پنل مشاورین املاک محاسبه و تسویه می‌گردد.
-          </p>
+  <!-- 3. Online Cost Estimator Section (from nocabin.zip) -->
+  <section class="section section-alt" id="estimator">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge"><i class="fa-solid fa-calculator"></i> ماشین‌حساب هوشمند نوکابین</span>
+        <h2>تخمین آنلاین هزینه بازسازی در ۳۰ ثانیه</h2>
+        <p>متراژ تقریبی کابینت و جنس فعلی درب‌ها را مشخص کنید تا هزینه بازسازی با رنگ پلی‌اورتان غیرکوره‌ای را در مقایسه با تعویض کامل (۱ به ۱۰) ببینید.</p>
+      </div>
+
+      <div class="estimator-card">
+        <div class="estimator-grid">
+          <div>
+            <!-- Step 1: Meterage Slider -->
+            <div style="margin-bottom: 24px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label for="kitchenSizeSlider" style="font-weight: 800;">۱. متراژ تقریبی کابینت‌ها (متر طول):</label>
+                <span class="tag gold" style="font-size: 0.95rem;"><strong id="sizeValueDisplay">۱۰</strong> متر طول</span>
+              </div>
+              <input type="range" id="kitchenSizeSlider" class="range-slider" min="5" max="25" value="10" step="1" />
+              <div class="range-labels">
+                <span>۵ متر (آشپزخانه نقلی)</span>
+                <span>۱۰ متر (استاندارد)</span>
+                <span>۲۵ متر (بزرگ / لوکس)</span>
+              </div>
+            </div>
+
+            <!-- Step 2: Current Material Condition -->
+            <div>
+              <label style="font-weight: 800; display: block; margin-bottom: 10px;">۲. جنس و وضعیت فعلی درب‌های کابینت:</label>
+              <div class="condition-cards" id="conditionCards">
+                <div class="cond-card active" data-mult="1" data-label="MDF یا چوب سالم">
+                  <i class="fa-solid fa-door-closed"></i>
+                  <strong>MDF / چوب سالم</strong>
+                  <small>فقط رنگ‌رفتگی یا قدیمی بودن رنگ</small>
+                </div>
+                <div class="cond-card" data-mult="1.12" data-label="وکیوم (ممبران) پوسته‌شده">
+                  <i class="fa-solid fa-layer-group"></i>
+                  <strong>وکیوم / ممبران</strong>
+                  <small>نیاز به کندن روکش و زیرسازی پلی‌اورتان</small>
+                </div>
+                <div class="cond-card" data-mult="1.18" data-label="کلاسیک منبت‌کاری / رنگ سوخته">
+                  <i class="fa-solid fa-brush"></i>
+                  <strong>کلاسیک / پرکار</strong>
+                  <small>سمباده‌زنی و بتونه‌کاری ابزاری</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Estimator Result Box -->
+          <div class="estimate-result-box">
+            <div style="font-size: 0.85rem; color: #d8cebe;">هزینه تعویض کامل این متراژ در بازار:</div>
+            <div style="font-size: 1.15rem; text-decoration: line-through; color: #e58b82; font-weight: 700; margin-top: 2px;" id="replaceCostDisplay">
+              ۷۰۰ میلیون تومان
+            </div>
+
+            <div style="font-size: 0.9rem; color: #fff; margin-top: 14px;">هزینه بازسازی در نوکابین (یک‌دهم تعویض):</div>
+            <div class="est-price-main" id="renovateCostDisplay">۷۰ میلیون تومان</div>
+            <div style="font-size: 0.82rem; color: #cfc3b2;">تحویل قطعی در <strong>۱۵ روز کاری</strong> با رنگ پلی‌اورتان غیرکوره‌ای</div>
+
+            <div class="est-savings-pill">
+              <i class="fa-solid fa-piggy-bank"></i>
+              <span>سود مستقیم شما: <strong id="savingsDisplay">۶۳۰ میلیون تومان</strong> صرفه‌جویی!</span>
+            </div>
+
+            <button type="button" class="btn btn-gold" style="width: 100%; margin-top: 18px;" id="lockEstimateBtn">
+              ثبت این برآورد و درخواست کارشناسی رایگان
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Specialized Services Section (inspired by nocabin.ir + ChatGPT details) -->
+  <section class="section" id="services">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge"><i class="fa-solid fa-screwdriver-wrench"></i> خدمات تخصصی نوکابین</span>
+        <h2>در بازسازی آشپزخانه چه کارهایی برای شما انجام می‌دهیم؟</h2>
+        <p>تمام مراحل بازسازی بدون تخریب دیوارها و بدون کثیف‌کاری در منزل شما، در کارگاه تخصصی ایزوله انجام می‌شود.</p>
+      </div>
+
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-spray-can-sparkles"></i></div>
+          <h3>رنگ‌آمیزی پلی‌اورتان غیرکوره‌ای</h3>
+          <p>استفاده از رنگ‌های تخصصی دوجزئی پلی‌اورتان (غیرکوره‌ای) برندهای معتبر همچون نیپون با پوشش ابریشمی سوپرمات و مقاومت بالا در برابر رطوبت و خط‌وخش.</p>
         </div>
 
-        <div class="form-section-grid">
-          <form class="card" id="agentForm">
-            <div class="form-grid">
-              <div class="field">
-                <label for="agentName">نام و نام خانوادگی *</label>
-                <input type="text" id="agentName" name="fullName" required placeholder="مثال: حسین رضایی" />
-              </div>
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-swatchbook"></i></div>
+          <h3>سیستم تأیید نمونه واقعی در محل</h3>
+          <p>قبل از رنگ‌آمیزی نهایی، سمپل واقعی رنگ انتخابی (مانند گریژ گرم NP N 1864T) در نور واقعی آشپزخانه شما تست و پس از تأیید شما اجرا می‌شود.</p>
+        </div>
 
-              <div class="field">
-                <label for="agentPhone">شماره همراه (کد معرف شما) *</label>
-                <input type="tel" id="agentPhone" name="phone" class="ltr" required placeholder="09121112233" />
-              </div>
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-table-columns"></i></div>
+          <h3>ساخت جزیره و کافی‌بار مدرن</h3>
+          <p>در صورت تمایل، هم‌زمان با رنگ‌آمیزی کابینت‌ها، جزیره آشپزخانه یا استیشن کافی‌بار اختصاصی دقیقاً هم‌رنگ کابینت‌های جدید برایتان ساخته می‌شود.</p>
+        </div>
 
-              <div class="field">
-                <label for="agentAgency">نام دفتر املاک</label>
-                <input type="text" id="agentAgency" name="agencyName" placeholder="مثال: مسکن نیاوران" />
-              </div>
+        <div class="service-card">
+          <div class="service-icon"><i class="fa-solid fa-border-all"></i></div>
+          <h3>نوسازی صفحه کابینت و بین‌کابینتی</h3>
+          <p>امکان رنگ‌آمیزی تخصصی و روکش صفحه کابینت، تعویض کاشی بین‌کابینتی با اسلب مدرن، رگلاژ کامل لولاها و تعویض دستگیره‌ها در پکیج یکپارچه.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-              <div class="field">
-                <label for="agentDistrict">محدوده فعالیت *</label>
-                <select id="agentDistrict" name="district">
-                  <option value="شمال و شرق تهران">شمال و شرق تهران</option>
-                  <option value="مرکز تهران">مرکز تهران</option>
-                  <option value="غرب تهران">غرب تهران</option>
-                  <option value="جنوب و سایر مناطق تهران">جنوب و سایر مناطق تهران</option>
-                </select>
-              </div>
+  <!-- 5. Comparison Table Section (nocabin.zip structure + 1/10 cost & 15 days) -->
+  <section class="section section-alt" id="comparison">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge"><i class="fa-solid fa-scale-balanced"></i> مقایسه شفاف</span>
+        <h2>چرا بازسازی با نوکابین به جای تعویض کامل کابینت؟</h2>
+        <p>وقتی بدنه و یونیت‌های کابینت سالم است، تخریب آن فقط هدر دادن صدها میلیون تومان سرمایه و هفته‌ها زمان است.</p>
+      </div>
 
-              <div class="field full">
-                <label>نحوه ارتباط ترجیحی با شما *</label>
-                <div class="messenger-choices">
-                  <label class="messenger-option">
-                    <input type="radio" name="messenger" value="bale" checked />
-                    <span class="messenger-card bale">پیام‌رسان بله (Bale)</span>
-                  </label>
-                  <label class="messenger-option">
-                    <input type="radio" name="messenger" value="whatsapp" />
-                    <span class="messenger-card wa">واتس‌اپ (WhatsApp)</span>
-                  </label>
+      <div class="comp-table-wrapper">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>معیار مقایسه</th>
+              <th class="highlight-col">بازسازی تخصصی نوکابین (پیشنهاد هوشمند)</th>
+              <th>تعویض کامل کابینت (روش سنتی)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>هزینه تمام‌شده (میانگین)</strong></td>
+              <td class="highlight-col">
+                <i class="fa-solid fa-circle-check icon-check"></i>
+                <strong>یک‌دهم هزینه تعویض (حدود ۷۰ میلیون تومان)</strong>
+              </td>
+              <td>
+                <i class="fa-solid fa-circle-xmark icon-cross"></i>
+                حدود ۷۰۰ میلیون تومان (۱۰ برابر گران‌تر)
+              </td>
+            </tr>
+            <tr>
+              <td><strong>زمان تحویل پروژه</strong></td>
+              <td class="highlight-col">
+                <i class="fa-solid fa-circle-check icon-check"></i>
+                <strong>تحویل قطعی در ۱۵ روز</strong>
+              </td>
+              <td>
+                <i class="fa-solid fa-circle-xmark icon-cross"></i>
+                ۳۰ تا ۶۰ روز کاری و تعطیلی کامل آشپزخانه
+              </td>
+            </tr>
+            <tr>
+              <td><strong>فناوری رنگ و پوشش</strong></td>
+              <td class="highlight-col">
+                <i class="fa-solid fa-circle-check icon-check"></i>
+                <strong>رنگ پلی‌اورتان غیرکوره‌ای دوجزئی در کارگاه ایزوله</strong>
+              </td>
+              <td>
+                <i class="fa-solid fa-circle-xmark icon-cross"></i>
+                ورق‌های آماده بازاری یا روکش‌های حساس به بخار
+              </td>
+            </tr>
+            <tr>
+              <td><strong>خرابکاری، گردوغبار و بوی رنگ در خانه</strong></td>
+              <td class="highlight-col">
+                <i class="fa-solid fa-circle-check icon-check"></i>
+                <strong>صفر! باز شدن درب‌ها و پاشش در کارگاه تخصصی</strong>
+              </td>
+              <td>
+                <i class="fa-solid fa-circle-xmark icon-cross"></i>
+                تخریب، خاک‌ریزی، سروصدا و جابه‌جایی کل وسایل
+              </td>
+            </tr>
+            <tr>
+              <td><strong>اطمینان از رنگ نهایی قبل از اجرا</strong></td>
+              <td class="highlight-col">
+                <i class="fa-solid fa-circle-check icon-check"></i>
+                <strong>سیستم تأیید نمونه واقعی رنگ در نور آشپزخانه شما</strong>
+              </td>
+              <td>
+                <i class="fa-solid fa-circle-xmark icon-cross"></i>
+                انتخاب از روی کاتالوگ کوچک و ریسک اختلاف رنگ
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 4-Step Process Section -->
+  <section class="section" id="process">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge"><i class="fa-solid fa-route"></i> نقشه راه ۱۵ روزه</span>
+        <h2>مراحل بازسازی کابینت در نوکابین چطور انجام می‌شود؟</h2>
+        <p>بدون اینکه زندگی روزمره شما در خانه مختل شود، صفر تا صد کار در ۴ گام منظم پیش می‌رود.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-badge">۱</div>
+          <h3>ارسال ۳ عکس و بررسی اولیه</h3>
+          <p>۳ عکس از آشپزخانه در سایت آپلود می‌کنید؛ کارشناسان ما بررسی می‌کنند که آیا بازسازی برای کابینت شما به‌صرفه و شدنی است یا خیر.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-badge">۲</div>
+          <h3>بازدید رایگان و تأیید سمپل رنگ</h3>
+          <p>کارشناس ما به رایگان در محل حاضر شده، سلامت اسکلت را می‌سنجد و نمونه واقعی رنگ پلی‌اورتان را زیر نور آشپزخانه شما تست می‌کند.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-badge">۳</div>
+          <h3>انتقال درب‌ها به کارگاه ایزوله</h3>
+          <p>درب‌ها و قطعات جداشدنی با کدگذاری باز شده و در کارگاه ایزوله، زیرسازی، بتونه‌کاری و پاشش رنگ پلی‌اورتان غیرکوره‌ای روی آن‌ها انجام می‌شود.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-badge">۴</div>
+          <h3>نصب، رگلاژ و تحویل در ۱۵ روز</h3>
+          <p>در پایان ۱۵ روز، تمامی قطعات نصب، لولاها و دستگیره‌ها رگلاژ یا نوسازی شده و آشپزخانه‌ای کاملاً نو تحویل شما می‌گردد.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Free Inspection Request Form (#inspection) — MUST BE BEFORE Real Estate Agents Form -->
+  <section class="section section-alt" id="inspection">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge"><i class="fa-solid fa-calendar-check"></i> گام اول نوسازی آشپزخانه</span>
+        <h2>درخواست بازدید و کارشناسی رایگان در محل</h2>
+        <p>
+          فرم زیر را تکمیل کنید و حداکثر ۳ عکس از کابینت‌های فعلی خود بفرستید؛ کارشناسان نوکابین برای هماهنگی بازدید رایگان در تهران با شما تماس می‌گیرند.
+        </p>
+      </div>
+
+      <div class="card" style="max-width: 920px; margin: 0 auto;">
+        <div class="info-banner olive" style="margin-bottom: 22px;">
+          <i class="fa-solid fa-gift" style="margin-left: 6px;"></i>
+          <strong>هدیه ویژه معرفی توسط مشاورین املاک:</strong>
+          اگر شخصی توسط معرف (مشاور املاک) بیاید و شماره همراه مشاور املاک معرفی‌کننده را در فرم زیر وارد کند، ما به او <strong>۲ میلیون تومان تخفیف</strong> مستقیم روی فاکتور بازسازی می‌دهیم!
+        </div>
+
+        <form id="inspectionForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="inspFullName">نام و نام خانوادگی *</label>
+              <input type="text" id="inspFullName" name="fullName" required placeholder="مثال: سارا محمدی" />
+            </div>
+
+            <div class="field">
+              <label for="inspPhone">شماره همراه مشتری *</label>
+              <input type="tel" id="inspPhone" name="phone" class="ltr" required placeholder="09123456789" />
+            </div>
+
+            <div class="field">
+              <label for="inspDistrict">منطقه در تهران *</label>
+              <select id="inspDistrict" name="district" required>
+                <option value="شمال و شرق تهران">شمال و شرق تهران</option>
+                <option value="مرکز و غرب تهران">مرکز و غرب تهران</option>
+                <option value="جنوب و سایر مناطق تهران">جنوب و سایر مناطق تهران</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="inspCabinetType">جنس فعلی کابینت و هدف شما</label>
+              <select id="inspCabinetType" name="cabinetType">
+                <option value="ام‌دی‌اف / چوب (سکونت شخصی)">ام‌دی‌اف / چوب (سکونت شخصی)</option>
+                <option value="وکیوم / ممبران (نوسازی کامل)">وکیوم / ممبران (نوسازی کامل)</option>
+                <option value="بازسازی جهت فروش یا اجاره سریع‌تر ملک">بازسازی جهت فروش یا اجاره سریع‌تر ملک</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="inspMeters">متراژ تقریبی کابینت (متر طول)</label>
+              <input type="number" id="inspMeters" name="estimatedMeters" min="3" max="50" value="10" />
+            </div>
+
+            <div class="field">
+              <label for="inspReferrerPhone">شماره همراه مشاور املاک معرفی‌کننده (اختیاری — جهت ۲ میلیون تومان تخفیف)</label>
+              <input
+                type="tel"
+                id="inspReferrerPhone"
+                name="referrerPhone"
+                class="ltr"
+                placeholder="مثال: 09121112233"
+              />
+              <span class="field-hint" style="color: var(--accent-olive); font-weight: 600;">
+                اگر توسط مشاور املاک معرفی شده‌اید، شماره همراه ایشان را بنویسید تا ۲ میلیون تومان تخفیف برایتان ثبت شود.
+              </span>
+            </div>
+
+            <div class="field full">
+              <label for="inspNotes">گزینه‌های انتخابی در استودیو هوش مصنوعی / توضیحات تکمیلی</label>
+              <textarea
+                id="inspNotes"
+                name="notes"
+                rows="3"
+                placeholder="رنگ مورد نظر (مثلاً گریژ گرم نیپون)، ساخت جزیره، کافی‌بار یا ساعت مناسب برای تماس..."
+              ></textarea>
+            </div>
+
+            <div class="field full">
+              <label>آپلود عکس‌های کابینت فعلی (حداکثر ۳ عکس از آشپزخانه)</label>
+              <label class="upload-dropzone" for="inspPhotos">
+                <input
+                  type="file"
+                  id="inspPhotos"
+                  name="photos"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  hidden
+                />
+                <div style="font-weight: 800; font-size: 1rem; margin-bottom: 4px;">
+                  <i class="fa-solid fa-cloud-arrow-up" style="color: var(--accent-gold);"></i>
+                  برای انتخاب عکس‌های کابینت کلیک کنید (حداکثر ۳ تصویر)
+                </div>
+                <div style="font-size: 0.84rem; color: var(--text-secondary);">
+                  فرمت‌های مجاز: JPG, PNG, WEBP — اگر در استودیو هوش مصنوعی عکس انتخاب کرده‌اید، خودکار پیوست می‌شود
+                </div>
+              </label>
+              <div id="inspPhotoPreview" class="preview-grid"></div>
+            </div>
+          </div>
+
+          <div style="margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;">
+            <button type="submit" class="btn btn-primary btn-lg" id="inspSubmitBtn">
+              <i class="fa-solid fa-paper-plane"></i>
+              ثبت درخواست بازدید رایگان (تحویل ۱۵ روزه)
+            </button>
+            <div style="font-size: 0.88rem; color: var(--text-secondary);">
+              تلفن هماهنگی مستقیم:
+              <a href="tel:+989225603574" class="ltr" style="font-weight: 900; color: var(--bg-espresso);">+989225603574</a>
+            </div>
+          </div>
+        </form>
+
+        <div id="inspectionSuccessBox" style="display: none; margin-top: 20px;" class="info-banner olive"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Real Estate Agents Collaboration Section (#agents) — Placed AFTER Free Inspection Request -->
+  <section class="section" id="agents">
+    <div class="container">
+      <div class="re-section-box">
+        <div class="re-grid">
+          <div>
+            <span class="hero-kicker" style="background: rgba(181, 137, 70, 0.25); color: #f3d49c; border-color: rgba(181, 137, 70, 0.45);">
+              <i class="fa-solid fa-handshake"></i> باشگاه همکاران و مشاورین املاک تهران
+            </span>
+
+            <h2 style="font-size: clamp(1.5rem, 2.7vw, 2.15rem); font-weight: 900; margin-bottom: 14px; line-height: 1.4; color: #fff;">
+              مشاور املاک محترم، فایلهایی که کابینت های قدیمی دارند را به درآمد تبدیل کن!
+            </h2>
+
+            <p style="color: #ded4c6; margin-bottom: 18px; line-height: 1.85;">
+              بسیاری از فایل‌های فروش یا اجاره به خاطر ظاهر قدیمی کابینت‌ها ماه‌ها قفل می‌شوند و مشتری به بهانه هزینه <strong>۷۰۰ میلیون تومانی تعویض کابینت</strong> از معامله عقب می‌کشد. با معرفی <strong>نوکابین</strong> (بازسازی در ۱۵ روز با ۷۰ میلیون تومان)، هم معامله خود را جوش بدهید و هم پورسانت نقدی دریافت کنید:
+            </p>
+
+            <div class="commission-boxes">
+              <div class="comm-box">
+                <span class="comm-amount">۵۰۰,۰۰۰ تومان هدیه نقدی بازدید</span>
+                <p>حتی اگر مشتری معرفی‌شده شما قرارداد نبندد، به محض انجام بازدید حضوری کارشناسان ما از آشپزخانه، ۵۰۰ هزار تومان تقدیم شما می‌شود.</p>
+              </div>
+              <div class="comm-box">
+                <span class="comm-amount">۵٪ پورسانت قرارداد + ۲ میلیون تخفیف مشتری</span>
+                <p>در صورت عقد قرارداد بازسازی، ۵٪ مبلغ قرارداد به عنوان پورسانت مشاور املاک پرداخت شده و مالک نیز ۲ میلیون تومان تخفیف ویژه دریافت می‌کند.</p>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+              <a href="/panel.html?role=agent" class="btn btn-gold btn-sm">
+                <i class="fa-solid fa-user-tie"></i>
+                ورود به پنل اختصاصی مشاورین املاک (OTP)
+              </a>
+              <a href="https://wa.me/989225603574" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm">
+                واتس‌اپ (<span class="ltr">+989225603574</span>)
+              </a>
+              <a href="https://ble.ir/989225603574" target="_blank" rel="noopener" class="btn btn-bale btn-sm" data-bale-link>
+                بله (<span class="ltr">+989225603574</span>)
+              </a>
+            </div>
+          </div>
+
+          <div class="re-form-card">
+            <h3 style="font-size: 1.2rem; font-weight: 900; margin-bottom: 6px; color: var(--bg-espresso);">
+              فرم ثبت‌نام سریع مشاورین املاک
+            </h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">
+              مشخصات خود و پیام‌رسان دلخواهتان را ثبت کنید تا لینک دعوت اختصاصی و پنل پورسانت شما فوراً فعال شود.
+            </p>
+
+            <form id="agentApplyForm">
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="agentFullName">نام و نام خانوادگی مشاور *</label>
+                  <input type="text" id="agentFullName" name="fullName" required placeholder="مثال: مهندس علی رضایی" />
+                </div>
+
+                <div class="field">
+                  <label for="agentPhone">شماره همراه مشاور (کد معرف شما) *</label>
+                  <input type="tel" id="agentPhone" name="phone" class="ltr" required placeholder="09121112233" />
+                </div>
+
+                <div class="field">
+                  <label for="agentAgency">نام دپارتمان / دفتر املاک</label>
+                  <input type="text" id="agentAgency" name="agencyName" placeholder="مثال: مسکن بزرگ نیاوران" />
+                </div>
+
+                <div class="field full">
+                  <label for="agentDistrict">محدوده فعالیت</label>
+                  <select id="agentDistrict" name="district">
+                    <option value="شمال و شرق تهران">شمال و شرق تهران</option>
+                    <option value="مرکز و غرب تهران">مرکز و غرب تهران</option>
+                    <option value="سایر مناطق تهران">سایر مناطق تهران</option>
+                  </select>
+                </div>
+
+                <div class="field full">
+                  <label>ترجیح می‌دهید از چه طریقی با شما در ارتباط باشیم؟ *</label>
+                  <div class="messenger-choices">
+                    <label class="messenger-option">
+                      <input type="radio" name="messenger" value="bale" checked />
+                      <span class="messenger-card bale">پیام‌رسان بله</span>
+                    </label>
+                    <label class="messenger-option">
+                      <input type="radio" name="messenger" value="whatsapp" />
+                      <span class="messenger-card wa">پیام‌رسان واتس‌اپ</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              <div class="field full">
-                <label for="agentNotes">توضیحات یا تعداد فایل‌های ماهانه</label>
-                <textarea id="agentNotes" name="notes" rows="2" placeholder="توضیح مختصر درباره محدوده کاری شما..."></textarea>
-              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 18px;" id="agentSubmitBtn">
+                ثبت همکاری و دریافت لینک اختصاصی مشاور
+              </button>
+            </form>
 
-              <div class="field full">
-                <button type="submit" class="btn btn-gold" style="width: 100%;" id="agentSubmitBtn">
-                  ثبت‌نام همکاری و دریافت لینک دعوت اختصاصی
-                </button>
-              </div>
-            </div>
-            <div id="agentFormMessage" style="margin-top: 14px;"></div>
-          </form>
-
-          <div class="card">
-            <h3 style="font-size: 1.15rem; font-weight: 900; margin-bottom: 12px;">مزایای پنل اختصاصی مشاورین املاک</h3>
-            <ul class="compare-list" style="margin-top: 0;">
-              <li>✓ دریافت لینک دعوت اختصاصی و ثبت خودکار شماره همراه شما به عنوان معرف</li>
-              <li>✓ اعمال فوری ۲ میلیون تومان تخفیف برای مشتریان معرفی‌شده از سمت شما</li>
-              <li>✓ محاسبه شفاف و لحظه‌ای پورسانت هر قرارداد در پنل مشاورین املاک</li>
-              <li>✓ ارتباط سریع و مستقیم از طریق پیام‌رسان بله یا واتس‌اپ (<span class="ltr">+989225603574</span>)</li>
-            </ul>
-            <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
-              <a href="/panel.html?role=agent" class="btn btn-primary btn-sm">ورود به پنل مشاورین املاک</a>
-              <a href="https://ble.ir/989225603574" target="_blank" rel="noopener" class="btn btn-bale btn-sm" data-bale-link>ارتباط در بله</a>
-              <a href="https://wa.me/989225603574" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm">ارتباط در واتس‌اپ</a>
-            </div>
+            <div id="agentApplyResult" style="display: none; margin-top: 16px;" class="info-banner gold"></div>
           </div>
         </div>
       </div>
-    </section>
-  </main>
+    </div>
+  </section>
 
+  <!-- 9. FAQ Accordion Section (from nocabin.zip & nocabin.ir) -->
+  <section class="section section-alt" id="faq">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge"><i class="fa-solid fa-circle-question"></i> سوالات پرتکرار</span>
+        <h2>پاسخ به دغدغه‌های مهم شما درباره بازسازی کابینت</h2>
+        <p>همه‌چیز درباره دوام رنگ پلی‌اورتان غیرکوره‌ای، نحوه اجرا بدون کثیف‌کاری و زمان تحویل ۱۵ روزه.</p>
+      </div>
+
+      <div class="faq-list" id="faqList">
+        <div class="faq-item active">
+          <button type="button" class="faq-question">
+            <span>آیا رنگ پلی‌اورتان غیرکوره‌ای با رنگ‌های معمولی یا برچسب کابینت فرق دارد؟</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="faq-answer">
+            بله، کاملاً متفاوت است. ما از برچسب یا رنگ‌های ساختمانی استفاده نمی‌کنیم؛ درب‌ها پس از سمباده‌زنی و پرایمر تخصصی در کارگاه ایزوله، با رنگ دوجزئی <strong>پلی‌اورتان غیرکوره‌ای</strong> (مانند کدهای تخصصی نیپون) پاشش می‌شوند که بافتی کاملاً یکدست، سوپرمات و مقاوم در برابر رطوبت و شست‌وشو ایجاد می‌کند.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button type="button" class="faq-question">
+            <span>آیا در طول ۱۵ روز بازسازی، آشپزخانه ما غیرقابل استفاده یا کثیف می‌شود؟</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="faq-answer">
+            خیر! چون یونیت‌ها و اسکلت کابینت سر جای خود باقی می‌مانند و فقط درب‌ها، نماها و تاج‌ها به کارگاه منتقل می‌شوند، شما در تمام این ۱۵ روز می‌توانید از سینک، گاز و داخل کابینت‌های خود بدون بوی رنگ و گردوغبار استفاده کنید.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button type="button" class="faq-question">
+            <span>چطور مطمئن شوم رنگی که انتخاب می‌کنم به کاشی و نور آشپزخانه‌ام می‌آید؟</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="faq-answer">
+            علاوه بر پیش‌نمایش در <strong>استودیو هوش مصنوعی سایت</strong>، ما سیستم «تأیید نمونه واقعی» داریم؛ یعنی قبل از رنگ کردن کل درب‌ها، سمپل واقعی رنگ در نور روز و شب آشپزخانه شما قرار داده می‌شود و تنها پس از تأیید قطعی شما اجرا آغاز می‌گردد.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button type="button" class="faq-question">
+            <span>آیا هم‌زمان با رنگ کابینت، امکان ساخت جزیره یا کافی‌بار هم وجود دارد؟</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="faq-answer">
+            بله! یکی از محبوب‌ترین خدمات نوکابین این است که هم‌زمان با نوسازی کابینت‌ها، جزیره مرکزی، کافی‌بار (Coffee Bar)، نوسازی صفحه کابینت یا تغییر کاشی بین‌کابینتی را دقیقاً هم‌رنگ و هماهنگ با پالت جدید آشپزخانه شما اجرا می‌کنیم.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. Magazine / Educational Guides Section (inspired by nocabin.ir + ChatGPT transcript) -->
+  <section class="section" id="blog">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge"><i class="fa-solid fa-book-open"></i> مجله تخصصی نوکابین</span>
+        <h2>راهنمای انتخاب رنگ و نوسازی هوشمند آشپزخانه</h2>
+        <p>نکات کلیدی طراحی داخلی برای تبدیل کابینت‌های قهوه‌ای قدیمی به آشپزخانه‌های روشن و مدرن امروزی.</p>
+      </div>
+
+      <div class="blog-grid">
+        <article class="blog-card">
+          <img src="/assets/studio-color-greige.jpg" alt="راهنمای رنگ گریژ گرم نیپون برای کابینت" />
+          <div class="blog-body">
+            <span class="blog-tag">انتخاب رنگ تخصصی</span>
+            <h3>چرا «گریژ گرم دو رنگ» (NP N 1864T) بهترین جایگزین کابینت‌های قهوه‌ای است؟</h3>
+            <p>اگر صفحه و کاشی بین‌کابینتی شما ته‌رنگ کرم یا بژ دارد، سفید یخچالی فضا را بی‌روح می‌کند؛ اما گریژ گرم نیپون هارمونی فوق‌العاده‌ای با سنگ و سرامیک موجود می‌سازد.</p>
+          </div>
+        </article>
+
+        <article class="blog-card">
+          <img src="/assets/studio-coffeebar.jpg" alt="ساخت کافی بار و جزیره در بازسازی کابینت" />
+          <div class="blog-body">
+            <span class="blog-tag">ارتقای دکوراسیون</span>
+            <h3>چگونه با افزودن کافی‌بار یا جزیره، آشپزخانه قدیمی را لوکس کنیم؟</h3>
+            <p>بدون نیاز به تخریب کابینت‌ها، می‌توان یک کنج ساده روی صفحه کانتر را با شلف‌های چوبی و نور مخفی گرم به استیشن قهوه‌ساز (Coffee Bar) تبدیل کرد.</p>
+          </div>
+        </article>
+
+        <article class="blog-card">
+          <img src="/assets/after-2.jpg" alt="افزایش ارزش ملک با بازسازی کابینت" />
+          <div class="blog-body">
+            <span class="blog-tag">ویژه مالکین و مشاورین املاک</span>
+            <h3>نقش بازسازی ۱۵ روزه آشپزخانه در فروش سریع‌تر آپارتمان‌های تهران</h3>
+            <p>آشپزخانه اولین نقطه‌ای است که خریدار می‌بیند. با هزینه ۷۰ میلیون به جای ۷۰۰ میلیون تومان، مانع اصلی ذهنی خریدار در مذاکره قیمت برطرف می‌شود.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
   <footer class="site-footer">
     <div class="container">
       <div class="footer-grid">
         <div>
           <div class="brand" style="margin-bottom: 14px;">
-            <img src="/assets/logo.png" alt="نوکابین" class="brand-logo" />
+            <img src="/assets/logo.png" alt="لوگوی نوکابین" class="brand-logo" />
             <div class="brand-text">
               <span class="brand-title" style="color: #fff;">نوکابین</span>
-              <span class="brand-sub" style="color: #d4c7b6;">بازسازی کابینت بدون تعویض</span>
+              <span class="brand-sub" style="color: #d4c7b6;">بازسازی تخصصی کابینت بدون تعویض</span>
             </div>
           </div>
-          <p style="font-size: 0.9rem; color: #cdc3b6; max-width: 340px;">
-            بازسازی و تغییر رنگ تخصصی کابینت‌های قدیمی با رنگ پلی‌اورتان غیرکوره‌ای در ۱۵ روز کاری، با یک‌دهم هزینه تعویض کامل.
+          <p style="font-size: 0.9rem; color: #cdc3b6; line-height: 1.8;">
+            نوسازی کابینت‌های قدیمی با رنگ پلی‌اورتان غیرکوره‌ای، با یک‌دهم هزینه تعویض (۷۰ میلیون در مقابل ۷۰۰ میلیون تومان) و تحویل در ۱۵ روز به همراه استودیو هوش مصنوعی.
           </p>
         </div>
 
         <div>
           <div class="footer-title">مناطق تحت پوشش</div>
           <ul class="footer-list">
-            <li><strong>۱. شمال و شرق تهران</strong> (نیاوران، الهیه، فرمانیه، قیطریه، پاسداران، هروی، تهرانپارس، نارمک)</li>
-            <li>۲. مرکز و غرب تهران (یوسف‌آباد، سعادت‌آباد، شهرک غرب، پونک، صادقیه)</li>
+            <li><strong>۱. شمال و شرق تهران</strong></li>
+            <li>۲. مرکز و غرب تهران</li>
             <li>۳. جنوب و سایر مناطق شهر تهران</li>
           </ul>
         </div>
 
         <div>
-          <div class="footer-title">تماس و شبکه‌های ارتباطی</div>
+          <div class="footer-title">دسترسی سریع</div>
           <ul class="footer-list">
-            <li>
-              تلفن هماهنگی:
-              <a href="tel:+989225603574" class="ltr" style="color: #e6c68f; font-weight: 800;">+989225603574</a>
-            </li>
-            <li>ساعات پاسخگویی: ۹ صبح تا ۹ شب</li>
+            <li><a href="#ai-studio">استودیو هوش مصنوعی (آپلود ۳ عکس)</a></li>
+            <li><a href="/changes.html">مشاهده تغییرات واقعی</a></li>
+            <li><a href="#estimator">تخمین آنلاین هزینه</a></li>
+            <li><a href="#inspection">درخواست بازدید و کارشناسی رایگان</a></li>
+            <li><a href="#agents">همکاری با مشاورین املاک</a></li>
+            <li><a href="/panel.html">پنل کاربری / مشاورین / مدیریت</a></li>
           </ul>
+        </div>
+
+        <div>
+          <div class="footer-title">تلفن هماهنگی و پیام‌رسان‌ها</div>
+          <p style="margin-bottom: 12px;">
+            تلفن هماهنگی:
+            <a href="tel:+989225603574" class="ltr" style="font-weight: 900; color: #f3d49c; font-size: 1.05rem;">+989225603574</a>
+          </p>
           <div class="contact-buttons">
             <a href="https://wa.me/989225603574" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm">
-              واتس‌اپ: <span class="ltr">+989225603574</span>
+              واتس‌اپ (<span class="ltr">+989225603574</span>)
             </a>
             <a href="https://ble.ir/989225603574" target="_blank" rel="noopener" class="btn btn-bale btn-sm" data-bale-link>
-              پیام‌رسان بله: <span class="ltr">+989225603574</span>
+              بله (<span class="ltr">+989225603574</span>)
             </a>
           </div>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <span>© نوکابین — تمامی حقوق محفوظ است.</span>
-        <span>پلتفرم بازسازی کابینت بدون تعویض</span>
+        <span>© تمامی حقوق برای نوکابین محفوظ است.</span>
+        <span>پشتیبانی و هماهنگی: <a href="tel:+989225603574" class="ltr">+989225603574</a></span>
       </div>
     </div>
   </footer>
 
-  <!-- Mobile Sticky Contact Bar -->
+  <!-- Floating Quick Action Buttons (Desktop & Mobile) -->
+  <div class="floating-contact">
+    <a href="https://wa.me/989225603574" target="_blank" rel="noopener" class="float-btn wa" title="ارتباط در واتس‌اپ">
+      <i class="fa-brands fa-whatsapp"></i>
+    </a>
+    <a href="tel:+989225603574" class="float-btn phone" title="تماس تلفنی مستقیم">
+      <i class="fa-solid fa-phone-volume"></i>
+    </a>
+  </div>
+
+  <!-- Mobile Sticky Bottom CTA -->
   <div class="mobile-sticky-bar">
-    <a href="tel:+989225603574" class="btn-primary">تماس</a>
-    <a href="https://wa.me/989225603574" target="_blank" rel="noopener" class="btn-whatsapp">واتس‌اپ</a>
-    <a href="https://ble.ir/989225603574" target="_blank" rel="noopener" class="btn-bale" data-bale-link>بله</a>
-    <a href="#inspection" class="btn-gold">بازدید رایگان</a>
+    <a href="tel:+989225603574" class="btn btn-outline btn-sm">
+      تماس: <span class="ltr">+989225603574</span>
+    </a>
+    <a href="https://wa.me/989225603574" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm">
+      واتس‌اپ
+    </a>
+    <a href="https://ble.ir/989225603574" target="_blank" rel="noopener" class="btn btn-bale btn-sm" data-bale-link>
+      بله
+    </a>
   </div>
 
   <div class="toast-container" id="toastContainer"></div>

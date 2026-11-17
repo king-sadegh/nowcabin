@@ -11,6 +11,7 @@ const inspectionRoutes = require('./src/routes/inspections');
 const agentRoutes = require('./src/routes/agents');
 const galleryRoutes = require('./src/routes/gallery');
 const adminRoutes = require('./src/routes/admin');
+const aiStudioRoutes = require('./src/routes/ai-studio');
 
 const app = express();
 
@@ -42,9 +43,10 @@ app.use('/api/inspections', inspectionRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ai-studio', aiStudioRoutes);
 
 // Friendly HTML route aliases
-app.get('/changes', (_req, res) => {
+app.get(['/changes', '/gallery.html', '/gallery'], (_req, res) => {
   res.sendFile(path.join(config.ROOT_DIR, 'public', 'changes.html'));
 });
 app.get('/panel', (_req, res) => {

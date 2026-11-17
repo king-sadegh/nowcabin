@@ -133,8 +133,10 @@ function seedDefaults() {
   };
 
   for (const [k, v] of Object.entries(defaultSettings)) {
-    const exists = db.prepare('SELECT 1 FROM settings WHERE key = ?').get(k);
-    if (!exists) setSetting(k, v);
+    const exists = db.prepare('SELECT value FROM settings WHERE key = ?').get(k);
+    if (!exists || (k === 'max_photos_per_user' && exists.value === '5')) {
+      setSetting(k, v);
+    }
   }
 
   // Ensure admin user exists

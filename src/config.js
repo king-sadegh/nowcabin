@@ -27,7 +27,7 @@ module.exports = {
   APP_SECRET: process.env.APP_SECRET || 'nokabin-dev-secret-change-in-production-2026',
   OTP_TEST_MODE: String(process.env.OTP_TEST_MODE ?? 'true').toLowerCase() !== 'false',
   ADMIN_PHONE: normalizePhone(process.env.ADMIN_PHONE || '09225603574'),
-  MAX_PHOTOS_PER_USER: Number(process.env.MAX_PHOTOS_PER_USER) || 5,
+  MAX_PHOTOS_PER_USER: Number(process.env.MAX_PHOTOS_PER_USER) || 3,
   REFERRAL_DISCOUNT_TOMAN: Number(process.env.REFERRAL_DISCOUNT_TOMAN) || 2000000,
   DEFAULT_AGENT_COMMISSION_PERCENT: Number(process.env.DEFAULT_AGENT_COMMISSION_PERCENT) || 5,
   CONTACT_PHONE_DISPLAY: '+989225603574',
