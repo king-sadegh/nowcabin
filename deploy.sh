@@ -21,6 +21,30 @@ if ! command -v docker >/dev/null 2>&1; then
   systemctl enable --now docker
 fi
 
+# 2.5. Configure Iranian Docker Hub mirrors if not already configured (prevents 403 Forbidden on Iran VPS)
+if [ ! -f /etc/docker/daemon.json ] || ! grep -q "registry-mirrors" /etc/docker/daemon.json 2>/dev/null; then
+  echo "Configuring Docker Hub mirror (ArvanCloud / Iran)..."
+  mkdir -p /etc/docker
+  cat <<'EOF' > /etc/docker/daemon.json
+{
+  "registry-mirrors": [
+    "https://docker.arvancloud.ir",
+    "https://docker.haiocloud.com"
+  ]
+}
+EOF
+  systemctl restart docker
+fi
+
+# Pre-pull base image via daemon mirror so docker build won't hit registry-1.docker.io 403
+if ! docker image inspect node:24-slim >/dev/null 2>&1; then
+  echo "Pulling node:24-slim via mirror..."
+  if ! docker pull node:24-slim; then
+    docker pull docker.arvancloud.ir/library/node:24-slim
+    docker tag docker.arvancloud.ir/library/node:24-slim node:24-slim
+  fi
+fi
+
 # 3. Prepare .env if missing
 if [ ! -f .env ]; then
   cp .env.example .env
@@ -31,7 +55,10 @@ fi
 
 mkdir -p data uploads
 
-# 4. Build and launch Docker container (supports both v2 plugin and v1 binary)
+# 4. Build and launch Docker container using cached base image
+export DOCKER_BUILDKIT=0
+export COMPOSE_DOCKER_CLI_BUILD=0
+
 if docker compose version >/dev/null 2>&1; then
   docker compose up -d --build
 elif command -v docker-compose >/dev/null 2>&1; then

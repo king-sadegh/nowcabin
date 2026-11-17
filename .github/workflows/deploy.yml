@@ -30,10 +30,11 @@ jobs:
             elif [ -d "$HOME/karami" ]; then
               cd "$HOME/karami"
             else
-              git clone https://github.com/king-sadegh/karami.git /opt/nokabin
+              git clone https://github.com/king-sadegh/nowcabin.git /opt/nokabin
               cd /opt/nokabin
             fi
 
+            git remote set-url origin https://github.com/king-sadegh/nowcabin.git
             git fetch origin main
             git reset --hard origin/main
             chmod +x deploy.sh
