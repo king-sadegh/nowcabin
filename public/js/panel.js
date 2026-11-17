@@ -668,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
               <div class="field">
                 <label>رنگ پلی‌اورتان اجراشده *</label>
-                <input type="text" name="paintColor" required value="پلی‌اورتان غیرکوره‌ای کرم و طوسی گرم" />
+                <input type="text" name="paintColor" required value="رنگ پلی‌اورتان کرم و طوسی گرم" />
               </div>
               <div class="field">
                 <label>مدت تحویل (روز)</label>

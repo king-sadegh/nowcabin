@@ -6,7 +6,7 @@ const router = express.Router();
 const STUDIO_OPTIONS = [
   {
     id: 'color_greige',
-    category: 'رنگ کابینت (پلی‌اورتان غیرکوره‌ای)',
+    category: 'رنگ کابینت (رنگ پلی‌اورتان)',
     title: 'گریژ گرم دو رنگ (کد نیپون NP N 1864T + 3026P)',
     subtitle: 'کابینت بالا گریژ روشن گرم + کابینت پایین گریژ متوسط (پیشنهاد اول نوکابین)',
     swatch: '#b8a99a',
@@ -17,18 +17,18 @@ const STUDIO_OPTIONS = [
   },
   {
     id: 'color_nordic',
-    category: 'رنگ کابینت (پلی‌اورتان غیرکوره‌ای)',
+    category: 'رنگ کابینت (رنگ پلی‌اورتان)',
     title: 'سفید گرم نوردیک (Ivory / Alabaster)',
     subtitle: 'روشن‌ترین انتخاب برای بزرگ‌تر و دلبازتر دیده شدن فضای آشپزخانه',
     swatch: '#FAF8F5',
     extraCostMillions: 0,
     previewImage: '/assets/studio-color-nordic.jpg',
     beforeImage: '/assets/before-1.jpg',
-    aiNote: 'مناسب آشپزخانه‌های کم‌نور؛ اجرای سوپرمات ابریشمی پلی‌اورتان غیرکوره‌ای.',
+    aiNote: 'مناسب آشپزخانه‌های کم‌نور؛ اجرای سوپرمات ابریشمی با رنگ پلی‌اورتان.',
   },
   {
     id: 'color_sage',
-    category: 'رنگ کابینت (پلی‌اورتان غیرکوره‌ای)',
+    category: 'رنگ کابینت (رنگ پلی‌اورتان)',
     title: 'سبز زیتونی / سیج مات + بالا کرم گرم',
     subtitle: 'ترکیب خاص و اروپایی، فوق‌العاده هماهنگ با صفحه و کاشی‌های گرم',
     swatch: '#4B5842',
@@ -39,7 +39,7 @@ const STUDIO_OPTIONS = [
   },
   {
     id: 'color_smoky',
-    category: 'رنگ کابینت (پلی‌اورتان غیرکوره‌ای)',
+    category: 'رنگ کابینت (رنگ پلی‌اورتان)',
     title: 'طوسی اسموکی / زغالی مدرن + بالا گریژ روشن',
     subtitle: 'کنتراست مدرن و شیک بدون تاریک شدن نیمه بالایی آشپزخانه',
     swatch: '#5A5E63',
@@ -122,7 +122,7 @@ router.post('/analyze', upload.array('photos', 3), (req, res) => {
     const analysis = {
       photosCount: files.length,
       detectedLayout: files.length >= 2 ? 'چیدمان خطی / ال‌شکل با یونیت‌های هوایی و زمینی سالم' : 'یونیت‌های دیواری و زمینی استاندارد با اسکلت قابل نگهداری',
-      cabinetCondition: 'بدنه و اسکلت سالم — مناسب زیرسازی کارگاهی و اجرای رنگ پلی‌اورتان دوجزئی غیرکوره‌ای',
+      cabinetCondition: 'بدنه و اسکلت سالم — مناسب زیرسازی کارگاهی و اجرای رنگ پلی‌اورتان',
       counterAndTileTone: 'ته‌رنگ گرم (کرم / بژ) — نیازمند پالت‌های خنثی گرم برای ایجاد هارمونی',
       recommendedPrimaryColor: 'گریژ گرم دو رنگ (کد نیپون NP N 1864T برای بالا + NP N 3026P برای پایین)',
       estimatedDelivery: '۱۵ روز کاری',

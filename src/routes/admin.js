@@ -170,7 +170,7 @@ router.post(
     try {
       const title = String(req.body?.title || '').trim();
       const district = String(req.body?.district || 'شمال و شرق تهران').trim();
-      const paintColor = String(req.body?.paintColor || 'پلی‌اورتان غیرکوره‌ای').trim();
+      const paintColor = String(req.body?.paintColor || 'رنگ پلی‌اورتان').trim();
       const durationDays = Math.max(1, Number(req.body?.durationDays) || 15);
       const costToman = Math.max(0, Number(req.body?.costToman) || 70000000);
       const description = String(req.body?.description || '').trim();
