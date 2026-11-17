@@ -155,9 +155,9 @@
     <div class="container">
       <div class="section-header">
         <span class="section-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> استودیو هوشمند بازسازی نوکابین</span>
-        <h2>آپلود ۳ عکس از آشپزخانه و مشاهده رنگ‌های مختلف روی عکس خودتان</h2>
+        <h2>آپلود ۳ عکس از آشپزخانه و ساخت اسکیچ و رندر هوشمند تغییرات</h2>
         <p>
-          حداکثر <strong>۳ عکس از زوایای مختلف آشپزخانه</strong> خود آپلود کنید؛ هوش مصنوعی نوکابین کابینت‌های عکس شما را تشخیص می‌دهد و با کلیک روی هر رنگ از کالیته یا گزینه‌های بازسازی، <strong>پیش‌نمایش همان تغییر را روی عکس آشپزخانه خودتان</strong> به شما نشان می‌دهد!
+          حداکثر <strong>۳ عکس از زوایای مختلف آشپزخانه</strong> خود آپلود کنید؛ هوش مصنوعی نوکابین کلیت آشپزخانه شما را تحلیل کرده، <strong>اسکیچ معماری و رندر بازسازی</strong> آن را می‌سازد و با کلیک روی هر رنگ از کالیته یا گزینه‌های بازسازی، پیش‌نمایش دقیق تغییرات را روی رندر و اسکیچ به شما نشان می‌دهد!
         </p>
       </div>
 
@@ -202,10 +202,10 @@
             <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 20px;">
               <button type="button" class="btn btn-primary" id="analyzeKitchenBtn">
                 <i class="fa-solid fa-microchip"></i>
-                تحلیل هوشمند آشپزخانه با هوش مصنوعی (<span id="uploadedCountBadge">۰</span>/۳ عکس)
+                <span>تحلیل عکس‌ها و ساخت اسکیچ و رندر هوشمند (<strong id="uploadedCountBadge">۰</strong>/۳ عکس)</span>
               </button>
               <span style="font-size: 0.84rem; color: var(--text-secondary);">
-                پس از آپلود عکس، روی هر رنگ کلیک کنید تا مستقیماً روی عکس آشپزخانه شما اعمال شود.
+                پس از آپلود عکس، اسکیچ و رندر معماری آشپزخانه ساخته می‌شود تا رنگ‌ها و تغییرات را کاملاً تمیز و واقعی ببینید.
               </span>
             </div>
 
@@ -286,7 +286,7 @@
               <div class="palette-box" id="paletteSwatchesBox">
                 <div class="palette-header">
                   <strong><i class="fa-solid fa-palette" style="color: var(--accent-gold-dark); margin-left: 4px;"></i> انتخاب رنگ دلخواه از کالیته رنگ پلی‌اورتان:</strong>
-                  <span style="font-size: 0.76rem; color: var(--text-secondary);">روی هر کد رنگ کلیک کنید تا روی کابینت شما اعمال شود</span>
+                  <span style="font-size: 0.76rem; color: var(--text-secondary);">روی هر کد رنگ کلیک کنید تا روی اسکیچ و رندر کابینت اعمال شود</span>
                 </div>
                 <div class="palette-swatches" id="paletteSwatchesList">
                   <button type="button" class="palette-chip" data-palette-hex="#e6dfd3" data-palette-lower="#c4b7a6" data-palette-name="بژ کشمیری (NP N 1859P)">
@@ -380,41 +380,55 @@
             </div>
           </div>
 
-          <!-- Left Column: Instant Realistic Photo Preview (Supports User's Own Uploaded Photos + Sample) -->
+          <!-- Left Column: AI Architectural Sketch & 3D Render Preview Card -->
           <div class="studio-preview-card">
+            <div class="studio-preview-badge" id="studioPreviewBadge">
+              رندر و اسکیچ معماری: گریژ گرم دو رنگ (NP N 1864T + 3026P)
+            </div>
+
+            <!-- 3-Mode View Switcher: 3D Architectural Render / User Photo Line Sketch / Original Photo -->
+            <div class="studio-mode-tabs" id="studioModeTabs">
+              <button type="button" class="studio-mode-tab active" data-studio-mode="render">
+                <i class="fa-solid fa-cubes"></i> رندر و اسکیچ سه‌بعدی
+              </button>
+              <button type="button" class="studio-mode-tab" data-studio-mode="sketch">
+                <i class="fa-solid fa-pen-ruler"></i> اسکیچ خطی عکس شما
+              </button>
+              <button type="button" class="studio-mode-tab" data-studio-mode="before">
+                <i class="fa-solid fa-image"></i> عکس اصلی (قبل)
+              </button>
+            </div>
+
             <div class="studio-preview-frame" id="studioPreviewFrame">
               <img
                 src="/assets/studio-color-greige.jpg"
                 alt="پیش‌نمایش زنده تغییرات کابینت"
                 id="studioPreviewImg"
+                style="display: none;"
               />
               <canvas
                 id="studioPreviewCanvas"
                 class="studio-preview-canvas"
-                style="display: none;"
-                title="برای تشخیص دقیق‌تر رنگ کابینت در عکس خودتان، روی یکی از درب‌های کابینت کلیک کنید"
               ></canvas>
-              <div class="studio-preview-badge" id="studioPreviewBadge">
-                پیش‌نمایش: گریژ گرم دو رنگ (NP N 1864T + 3026P)
-              </div>
-              <button type="button" class="studio-compare-toggle" id="studioCompareToggleBtn">
-                <i class="fa-solid fa-eye"></i>
-                نمایش عکس قبل از بازسازی
-              </button>
             </div>
 
-            <!-- Interactive Calibration Hint when User Photo is Active -->
+            <button type="button" class="studio-compare-toggle" id="studioCompareToggleBtn">
+              <i class="fa-solid fa-pen-ruler"></i>
+              تغییر حالت نمایش (رندر سه‌بعدی / اسکیچ خطی / عکس قبل)
+            </button>
+
+            <!-- Interactive Status Hint when User Photo is Active -->
             <div class="calibration-hint" id="calibrationHint">
               <i class="fa-solid fa-wand-magic-sparkles"></i>
-              <strong>پیش‌نمایش روی عکس آشپزخانه شما فعال است!</strong>
-              اگر می‌خواهید هوش مصنوعی دقیقاً جنس و رنگ درب کابینت شما را هدف بگیرد، <strong>روی یکی از درب‌های کابینت در عکس بالا کلیک کنید</strong>.
+              <strong>اسکیچ و رندر هوشمند از آشپزخانه شما ساخته شد!</strong>
+              با کلیک روی هر رنگ از کالیته یا گزینه‌های بالا (جزیره، کافی‌بار، صفحه کابینت و بین‌کابینتی)، تغییرات به‌صورت تمیز و دقیق روی اسکیچ و رندر اعمال می‌شود.
             </div>
 
             <!-- User's Own Uploaded Thumbnails Strip (if uploaded) -->
             <div id="userUploadedStrip" style="display: none; background: rgba(255,255,255,0.06); padding: 10px 12px; border-radius: 12px;">
               <div style="font-size: 0.78rem; color: #d8cebe; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                <span><i class="fa-solid fa-images"></i> انتخاب زاویه عکس برای اعمال رنگ و تغییرات:</span>
-                <button type="button" class="user-photo-pill" id="switchToSampleBtn">مشاهده روی نمونه استاندارد سایت</button>
+                <span><i class="fa-solid fa-images"></i> عکس‌های آپلودشده شما برای استخراج اسکیچ:</span>
+                <button type="button" class="user-photo-pill" id="switchToSampleBtn">مشاهده عکس‌های فابریک استودیو</button>
               </div>
               <div id="userUploadedThumbs" style="display: flex; gap: 8px; overflow-x: auto; align-items: center;"></div>
             </div>

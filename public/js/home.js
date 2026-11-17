@@ -126,14 +126,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // State for 3 uploaded photos & image objects
   const studioSlotFiles = [null, null, null];
   const studioSlotImages = [null, null, null];
-  const studioSlotProfiles = [null, null, null];
 
-  let activeUserSlotIdx = -1; // -1 means using site sample photo; 0..2 means using user's uploaded photo
+  let activeUserSlotIdx = -1; // -1 means no user photo selected yet; 0..2 means user's uploaded photo
   let activeColorOptionId = 'color_greige';
   let customPaletteSelection = null; // { name, upperHex, lowerHex } when chosen from کالیته رنگ
   const activeAddonIds = new Set();
   let focusedOptionId = 'color_greige';
-  let showingBeforeInStudio = false;
+  let studioViewMode = 'render'; // 'render' | 'sketch' | 'before'
 
   const studioPreviewImg = document.getElementById('studioPreviewImg');
   const studioPreviewCanvas = document.getElementById('studioPreviewCanvas');
@@ -149,6 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const calibrationHint = document.getElementById('calibrationHint');
   const switchToSampleBtn = document.getElementById('switchToSampleBtn');
 
+  // Preload default before-1.jpg so 'sketch' and 'before' modes work even before user uploads a photo
+  let defaultSampleBeforeImg = null;
+  const preloadDefaultImg = new Image();
+  preloadDefaultImg.onload = () => {
+    defaultSampleBeforeImg = preloadDefaultImg;
+    updateStudioPreviewUI();
+  };
+  preloadDefaultImg.src = '/assets/before-1.jpg';
+
   function hexToRgb(hex) {
     const clean = String(hex || '#d7cec2').replace('#', '');
     const num = parseInt(clean.length === 3 ? clean.replace(/(.)/g, '$1$1') : clean, 16);
@@ -163,76 +171,23 @@ document.addEventListener('DOMContentLoaded', () => {
     return v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
   }
 
+  function rgbCss(c, alpha = 1) {
+    return alpha < 1
+      ? `rgba(${clampByte(c.r)}, ${clampByte(c.g)}, ${clampByte(c.b)}, ${alpha})`
+      : `rgb(${clampByte(c.r)}, ${clampByte(c.g)}, ${clampByte(c.b)})`;
+  }
+
+  function shadeColor(c, delta) {
+    return {
+      r: clampByte(c.r + delta),
+      g: clampByte(c.g + delta),
+      b: clampByte(c.b + delta),
+    };
+  }
+
   function smoothstep(edge0, edge1, x) {
     const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
     return t * t * (3 - 2 * t);
-  }
-
-  // Analyze dominant cabinet surface colors in a user-uploaded kitchen image
-  function buildCabinetProfile(img) {
-    const off = document.createElement('canvas');
-    const w = 120;
-    const h = 90;
-    off.width = w;
-    off.height = h;
-    const ctx = off.getContext('2d');
-    ctx.drawImage(img, 0, 0, w, h);
-    const data = ctx.getImageData(0, 0, w, h).data;
-
-    // Quantize colors in upper & lower cabinet bands (y: 12%..40% and 55%..84%)
-    const bins = new Map();
-    for (let y = Math.floor(h * 0.12); y < Math.floor(h * 0.85); y++) {
-      const ny = y / h;
-      // Skip thin middle backsplash/counter slit during initial seed clustering
-      if (ny > 0.42 && ny < 0.53) continue;
-      for (let x = Math.floor(w * 0.08); x < Math.floor(w * 0.92); x++) {
-        const i = (y * w + x) * 4;
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const maxC = Math.max(r, g, b);
-        const minC = Math.min(r, g, b);
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-
-        // Ignore pure specular white lights or deep black appliance glass
-        if (lum > 242 || lum < 20) continue;
-
-        const qr = Math.round(r / 24) * 24;
-        const qg = Math.round(g / 24) * 24;
-        const qb = Math.round(b / 24) * 24;
-        const key = `${qr},${qg},${qb}`;
-        const prev = bins.get(key) || { count: 0, rSum: 0, gSum: 0, bSum: 0, satSum: 0 };
-        prev.count += 1;
-        prev.rSum += r;
-        prev.gSum += g;
-        prev.bSum += b;
-        prev.satSum += maxC - minC;
-        bins.set(key, prev);
-      }
-    }
-
-    const sorted = Array.from(bins.values()).sort((a, b) => b.count - a.count);
-    const clusters = sorted.slice(0, 4).map((c) => {
-      const r = c.rSum / c.count;
-      const g = c.gSum / c.count;
-      const b = c.bSum / c.count;
-      return {
-        r,
-        g,
-        b,
-        lum: (0.299 * r + 0.587 * g + 0.114 * b) / 255,
-        tolerance: 95,
-      };
-    });
-
-    if (clusters.length === 0) {
-      clusters.push({ r: 140, g: 105, b: 75, lum: 0.43, tolerance: 105 });
-    }
-
-    return {
-      clusters,
-      userSampled: [],
-    };
   }
 
   function getActivePaintColors() {
@@ -251,241 +206,742 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Render user's uploaded kitchen photo with polyurethane cabinet recoloring & active addons
-  function renderUserPhotoToCanvas() {
-    if (!studioPreviewCanvas || activeUserSlotIdx < 0) return;
-    const img = studioSlotImages[activeUserSlotIdx];
-    const profile = studioSlotProfiles[activeUserSlotIdx];
-    if (!img || !profile) return;
+  // Helper: Draw a 3D Shaker cabinet door with polyurethane satin sheen & architectural ink lines
+  function drawShakerCabinetDoor(ctx, x, y, w, h, baseRgb, handlePos = 'bottom-right') {
+    const lightRgb = shadeColor(baseRgb, 16);
+    const darkRgb = shadeColor(baseRgb, -18);
+    const recessRgb = shadeColor(baseRgb, -7);
 
-    const targetW = 760;
-    const targetH = Math.round((img.naturalHeight / Math.max(1, img.naturalWidth)) * targetW) || 570;
-    studioPreviewCanvas.width = targetW;
-    studioPreviewCanvas.height = targetH;
+    // Outer door fill with subtle vertical polyurethane satin sheen
+    const grad = ctx.createLinearGradient(x, y, x + w * 0.4, y + h);
+    grad.addColorStop(0, rgbCss(lightRgb));
+    grad.addColorStop(0.55, rgbCss(baseRgb));
+    grad.addColorStop(1, rgbCss(darkRgb));
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, w, h);
 
-    const ctx = studioPreviewCanvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, targetW, targetH);
+    // Outer architectural ink border
+    ctx.strokeStyle = 'rgba(42, 33, 27, 0.75)';
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(x, y, w, h);
 
-    // If user clicked "Compare Before", show their original untouched photo
-    if (showingBeforeInStudio) {
-      return;
+    // Inner Shaker recessed panel
+    const frame = Math.max(10, Math.min(18, Math.round(Math.min(w, h) * 0.14)));
+    if (w > frame * 2.4 && h > frame * 2.4) {
+      const ix = x + frame;
+      const iy = y + frame;
+      const iw = w - frame * 2;
+      const ih = h - frame * 2;
+
+      const innerGrad = ctx.createLinearGradient(ix, iy, ix, iy + ih);
+      innerGrad.addColorStop(0, rgbCss(recessRgb));
+      innerGrad.addColorStop(1, rgbCss(baseRgb));
+      ctx.fillStyle = innerGrad;
+      ctx.fillRect(ix, iy, iw, ih);
+
+      // Top/left inner bevel shadow
+      ctx.strokeStyle = 'rgba(30, 22, 16, 0.38)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(ix, iy + ih);
+      ctx.lineTo(ix, iy);
+      ctx.lineTo(ix + iw, iy);
+      ctx.stroke();
+
+      // Bottom/right inner bevel highlight
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(ix, iy + ih);
+      ctx.lineTo(ix + iw, iy + ih);
+      ctx.lineTo(ix + iw, iy);
+      ctx.stroke();
     }
 
-    const imgData = ctx.getImageData(0, 0, targetW, targetH);
-    const d = imgData.data;
+    // Minimalist architectural handle (dark bronze / brushed gold)
+    ctx.fillStyle = '#3a2e25';
+    ctx.strokeStyle = '#c59b57';
+    ctx.lineWidth = 1;
+    if (handlePos === 'center-top') {
+      const hw = Math.min(42, w * 0.34);
+      const hx = x + (w - hw) / 2;
+      const hy = y + Math.min(18, h * 0.28);
+      ctx.fillRect(hx, hy, hw, 4);
+    } else if (handlePos === 'bottom-left' || handlePos === 'bottom-right') {
+      const hx = handlePos === 'bottom-left' ? x + 8 : x + w - 12;
+      const hy = y + h - 34;
+      ctx.fillRect(hx, hy, 4, 22);
+    } else if (handlePos === 'top-left' || handlePos === 'top-right') {
+      const hx = handlePos === 'top-left' ? x + 8 : x + w - 12;
+      const hy = y + 14;
+      ctx.fillRect(hx, hy, 4, 22);
+    }
+  }
 
-    const { upper: upperRGB, lower: lowerRGB } = getActivePaintColors();
-    const upperTargetLum = (0.299 * upperRGB.r + 0.587 * upperRGB.g + 0.114 * upperRGB.b) / 255;
-    const lowerTargetLum = (0.299 * lowerRGB.r + 0.587 * lowerRGB.g + 0.114 * lowerRGB.b) / 255;
+  // Generate a small Sobel ink line-sketch thumbnail from an image for the blueprint corner card
+  function createMiniInkSketchCanvas(img, tw, th) {
+    const off = document.createElement('canvas');
+    off.width = tw;
+    off.height = th;
+    const octx = off.getContext('2d');
+    octx.drawImage(img, 0, 0, tw, th);
+    const src = octx.getImageData(0, 0, tw, th);
+    const sd = src.data;
+    const out = octx.createImageData(tw, th);
+    const od = out.data;
 
-    const allClusters = [...profile.userSampled, ...profile.clusters];
+    const lum = new Float32Array(tw * th);
+    for (let i = 0; i < tw * th; i++) {
+      const p = i * 4;
+      lum[i] = 0.299 * sd[p] + 0.587 * sd[p + 1] + 0.114 * sd[p + 2];
+    }
 
-    for (let y = 0; y < targetH; y++) {
-      const ny = y / targetH;
-      // Vertical envelope: cabinets live primarily between 6% and 90% of height
-      const topFade = smoothstep(0.03, 0.10, ny);
-      const bottomFade = 1 - smoothstep(0.86, 0.96, ny);
-      const zoneWeight = topFade * bottomFade;
-      if (zoneWeight <= 0.01) continue;
+    for (let y = 0; y < th; y++) {
+      for (let x = 0; x < tw; x++) {
+        const idx = y * tw + x;
+        let edge = 0;
+        if (x > 0 && x < tw - 1 && y > 0 && y < th - 1) {
+          const gx =
+            -lum[(y - 1) * tw + (x - 1)] +
+            lum[(y - 1) * tw + (x + 1)] -
+            2 * lum[y * tw + (x - 1)] +
+            2 * lum[y * tw + (x + 1)] -
+            lum[(y + 1) * tw + (x - 1)] +
+            lum[(y + 1) * tw + (x + 1)];
+          const gy =
+            -lum[(y - 1) * tw + (x - 1)] -
+            2 * lum[(y - 1) * tw + x] -
+            lum[(y - 1) * tw + (x + 1)] +
+            lum[(y + 1) * tw + (x - 1)] +
+            2 * lum[(y + 1) * tw + x] +
+            lum[(y + 1) * tw + (x + 1)];
+          edge = Math.min(1, Math.sqrt(gx * gx + gy * gy) / 210);
+        }
+        const ink = Math.pow(edge, 0.85);
+        const p = idx * 4;
+        od[p] = clampByte(250 * (1 - ink) + 42 * ink);
+        od[p + 1] = clampByte(245 * (1 - ink) + 33 * ink);
+        od[p + 2] = clampByte(236 * (1 - ink) + 25 * ink);
+        od[p + 3] = 255;
+      }
+    }
+    octx.putImageData(out, 0, 0);
+    return off;
+  }
 
-      // Smooth transition between upper cabinets (ny < 0.44) and lower cabinets (ny > 0.50)
-      const lowerMix = smoothstep(0.43, 0.51, ny);
-      const tr = upperRGB.r * (1 - lowerMix) + lowerRGB.r * lowerMix;
-      const tg = upperRGB.g * (1 - lowerMix) + lowerRGB.g * lowerMix;
-      const tb = upperRGB.b * (1 - lowerMix) + lowerRGB.b * lowerMix;
-      const tLum = upperTargetLum * (1 - lowerMix) + lowerTargetLum * lowerMix;
+  // MODE 1: Clean Parametric 3D Architectural Sketch & Interior Render
+  function renderArchitectural3DSketch(ctx, w, h, userImg) {
+    const { upper: upperRGB, lower: lowerRGB, label: paintLabel } = getActivePaintColors();
+    const hasBacksplash = activeAddonIds.has('change_backsplash');
+    const hasCountertop = activeAddonIds.has('refinish_countertop');
+    const hasCoffeeBar = activeAddonIds.has('add_coffeebar');
+    const hasIsland = activeAddonIds.has('add_island');
 
-      for (let x = 0; x < targetW; x++) {
-        const idx = (y * targetW + x) * 4;
-        const r = d[idx];
-        const g = d[idx + 1];
-        const b = d[idx + 2];
+    ctx.save();
+    // 1. Warm Architectural Paper Background & Ceiling/Walls
+    const wallGrad = ctx.createLinearGradient(0, 0, 0, h * 0.75);
+    wallGrad.addColorStop(0, '#f7f2e9');
+    wallGrad.addColorStop(0.5, '#efe7da');
+    wallGrad.addColorStop(1, '#e4d9c8');
+    ctx.fillStyle = wallGrad;
+    ctx.fillRect(0, 0, w, h);
 
-        const lum255 = 0.299 * r + 0.587 * g + 0.114 * b;
-        // Protect very dark appliance glass/screens & pure white lights
-        if (lum255 < 18 || lum255 > 246) continue;
+    // Subtle CAD Architectural Construction Grid Lines
+    ctx.strokeStyle = 'rgba(92, 74, 56, 0.08)';
+    ctx.lineWidth = 1;
+    for (let gx = 48; gx < w; gx += 48) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, h);
+      ctx.stroke();
+    }
+    for (let gy = 48; gy < h; gy += 48) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(w, gy);
+      ctx.stroke();
+    }
 
-        // Find closest cabinet cluster
-        let bestMask = 0;
-        let refLum = 0.45;
-        for (let cIdx = 0; cIdx < allClusters.length; cIdx++) {
-          const cl = allClusters[cIdx];
-          const dr = r - cl.r;
-          const dg = g - cl.g;
-          const db = b - cl.b;
-          const dist = Math.sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db);
-          const tol = cl.tolerance || 95;
-          const m = 1 - smoothstep(tol * 0.55, tol * 1.35, dist);
-          if (m > bestMask) {
-            bestMask = m;
-            refLum = cl.lum;
+    // 2. Ceiling Plane & Warm Recessed Spotlights
+    const ceilH = Math.round(h * 0.11);
+    ctx.fillStyle = '#fbf8f3';
+    ctx.fillRect(0, 0, w, ceilH);
+    ctx.strokeStyle = 'rgba(42, 33, 27, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.06, ceilH);
+    ctx.lineTo(w * 0.94, ceilH);
+    ctx.stroke();
+    // Perspective corner lines
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(w * 0.06, ceilH);
+    ctx.moveTo(w, 0);
+    ctx.lineTo(w * 0.94, ceilH);
+    ctx.stroke();
+
+    // Ceiling Spotlights + Warm Light Cones
+    [0.24, 0.5, 0.76].forEach((rx) => {
+      const lx = Math.round(w * rx);
+      const ly = Math.round(ceilH * 0.55);
+      const cone = ctx.createRadialGradient(lx, ly + 20, 6, lx, ly + 90, 140);
+      cone.addColorStop(0, 'rgba(255, 223, 158, 0.36)');
+      cone.addColorStop(1, 'rgba(255, 223, 158, 0)');
+      ctx.fillStyle = cone;
+      ctx.fillRect(lx - 140, 0, 280, 220);
+
+      ctx.fillStyle = '#fff9eb';
+      ctx.strokeStyle = '#8b6d3b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, 14, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    // 3. Perspective Stone Tile Flooring (y: 75%..100%)
+    const floorY = Math.round(h * 0.75);
+    const floorGrad = ctx.createLinearGradient(0, floorY, 0, h);
+    floorGrad.addColorStop(0, '#dad2c6');
+    floorGrad.addColorStop(1, '#c5bbb0');
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, floorY, w, h - floorY);
+
+    // Perspective floor tile lines
+    ctx.strokeStyle = 'rgba(65, 55, 45, 0.22)';
+    ctx.lineWidth = 1.2;
+    for (let i = -4; i <= 4; i++) {
+      const topX = w * 0.5 + i * (w * 0.11);
+      const botX = w * 0.5 + i * (w * 0.22);
+      ctx.beginPath();
+      ctx.moveTo(topX, floorY);
+      ctx.lineTo(botX, h);
+      ctx.stroke();
+    }
+    [0.81, 0.88, 0.96].forEach((fy) => {
+      ctx.beginPath();
+      ctx.moveTo(0, h * fy);
+      ctx.lineTo(w, h * fy);
+      ctx.stroke();
+    });
+
+    // Main Kitchen Bounds
+    const cabLeft = Math.round(w * 0.08);
+    const cabRight = Math.round(w * 0.92);
+    const cabW = cabRight - cabLeft;
+
+    const upperTop = Math.round(h * 0.14);
+    const upperH = Math.round(h * 0.23);
+    const upperBot = upperTop + upperH;
+
+    const bsTop = upperBot;
+    const bsH = Math.round(h * 0.14);
+    const bsBot = bsTop + bsH;
+
+    const ctTop = bsBot;
+    const ctH = Math.round(h * 0.032);
+    const ctBot = ctTop + ctH;
+
+    const lowerTop = ctBot;
+    const lowerH = Math.round(h * 0.205);
+    const lowerBot = lowerTop + lowerH;
+
+    // 4. Backsplash (بین‌کابینتی) — Standard Tile Grid vs Luxury Veined Marble Slab + LED
+    if (hasBacksplash) {
+      const mGrad = ctx.createLinearGradient(cabLeft, bsTop, cabRight, bsBot);
+      mGrad.addColorStop(0, '#f9f5ee');
+      mGrad.addColorStop(0.5, '#f1e9dc');
+      mGrad.addColorStop(1, '#e8decb');
+      ctx.fillStyle = mGrad;
+      ctx.fillRect(cabLeft, bsTop, cabW, bsH);
+
+      // Delicate Calacatta marble veins
+      ctx.strokeStyle = 'rgba(175, 145, 98, 0.36)';
+      ctx.lineWidth = 1.8;
+      for (let v = 0; v < 6; v++) {
+        const vx = cabLeft + (cabW / 6) * v + 25;
+        ctx.beginPath();
+        ctx.moveTo(vx, bsTop + 4);
+        ctx.bezierCurveTo(vx + 35, bsTop + bsH * 0.4, vx - 20, bsTop + bsH * 0.7, vx + 45, bsBot - 4);
+        ctx.stroke();
+      }
+
+      // Warm Under-Cabinet Hidden LED Light Line
+      const ledGlow = ctx.createLinearGradient(0, bsTop, 0, bsTop + bsH * 0.55);
+      ledGlow.addColorStop(0, 'rgba(255, 210, 125, 0.75)');
+      ledGlow.addColorStop(1, 'rgba(255, 210, 125, 0)');
+      ctx.fillStyle = ledGlow;
+      ctx.fillRect(cabLeft, bsTop, cabW, bsH * 0.55);
+
+      ctx.fillStyle = '#fff5d6';
+      ctx.fillRect(cabLeft + 4, bsTop, cabW - 8, 3);
+    } else {
+      ctx.fillStyle = '#e7dfd2';
+      ctx.fillRect(cabLeft, bsTop, cabW, bsH);
+      // Classic subway tile grid
+      ctx.strokeStyle = 'rgba(110, 96, 82, 0.25)';
+      ctx.lineWidth = 1;
+      const tileH = Math.round(bsH / 4);
+      const tileW = 44;
+      for (let ty = bsTop; ty <= bsBot; ty += tileH) {
+        ctx.beginPath();
+        ctx.moveTo(cabLeft, ty);
+        ctx.lineTo(cabRight, ty);
+        ctx.stroke();
+      }
+      for (let row = 0; row < 4; row++) {
+        const offset = (row % 2) * (tileW / 2);
+        for (let tx = cabLeft + offset; tx < cabRight; tx += tileW) {
+          ctx.beginPath();
+          ctx.moveTo(tx, bsTop + row * tileH);
+          ctx.lineTo(tx, Math.min(bsBot, bsTop + (row + 1) * tileH));
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.strokeStyle = 'rgba(42, 33, 27, 0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(cabLeft, bsTop, cabW, bsH);
+
+    // 5. Upper Cabinets (یونیت‌های هوایی) + Crown Molding (painted in upperRGB)
+    const numCols = 5;
+    const colW = cabW / numCols;
+    const upperColsToDraw = hasCoffeeBar ? 4 : 5; // If Coffee Bar is active, rightmost column becomes open oak shelves
+
+    // Crown Molding (تاج کابینت)
+    const crownW = colW * upperColsToDraw;
+    ctx.fillStyle = rgbCss(shadeColor(upperRGB, 12));
+    ctx.fillRect(cabLeft - 4, upperTop - 10, crownW + 8, 10);
+    ctx.strokeStyle = 'rgba(42, 33, 27, 0.75)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(cabLeft - 4, upperTop - 10, crownW + 8, 10);
+
+    // Soft shadow cast by upper cabinets onto backsplash
+    const dropShadow = ctx.createLinearGradient(0, upperBot, 0, upperBot + 14);
+    dropShadow.addColorStop(0, 'rgba(30, 22, 16, 0.28)');
+    dropShadow.addColorStop(1, 'rgba(30, 22, 16, 0)');
+    ctx.fillStyle = dropShadow;
+    ctx.fillRect(cabLeft, upperBot, crownW, 14);
+
+    for (let c = 0; c < upperColsToDraw; c++) {
+      const ux = Math.round(cabLeft + c * colW);
+      const uw = Math.round(colW);
+      // Double doors per module
+      const halfW = Math.floor(uw / 2);
+      drawShakerCabinetDoor(ctx, ux, upperTop, halfW, upperH, upperRGB, 'bottom-right');
+      drawShakerCabinetDoor(ctx, ux + halfW, upperTop, uw - halfW, upperH, upperRGB, 'bottom-left');
+    }
+
+    // 6. Coffee Bar Station (استیشن کافی‌بار اختصاصی در سمت راست) if active
+    if (hasCoffeeBar) {
+      const cbX = Math.round(cabLeft + 4 * colW);
+      const cbW = Math.round(colW);
+      const cbTop = upperTop - 10;
+      const cbTotalH = upperH + bsH + 10;
+
+      // Warm oak vertical wood slat background
+      ctx.fillStyle = '#8b5e34';
+      ctx.fillRect(cbX, cbTop, cbW, cbTotalH);
+      ctx.strokeStyle = 'rgba(48, 30, 14, 0.55)';
+      ctx.lineWidth = 1.2;
+      for (let sx = cbX + 8; sx < cbX + cbW; sx += 9) {
+        ctx.beginPath();
+        ctx.moveTo(sx, cbTop);
+        ctx.lineTo(sx, cbTop + cbTotalH);
+        ctx.stroke();
+      }
+      ctx.strokeRect(cbX, cbTop, cbW, cbTotalH);
+
+      // Warm LED radial glow inside Coffee Bar
+      const cbGlow = ctx.createRadialGradient(
+        cbX + cbW / 2,
+        cbTop + cbTotalH * 0.48,
+        8,
+        cbX + cbW / 2,
+        cbTop + cbTotalH * 0.48,
+        cbW * 0.75
+      );
+      cbGlow.addColorStop(0, 'rgba(255, 216, 140, 0.65)');
+      cbGlow.addColorStop(1, 'rgba(255, 216, 140, 0)');
+      ctx.fillStyle = cbGlow;
+      ctx.fillRect(cbX, cbTop, cbW, cbTotalH);
+
+      // Two floating natural wood shelves + LED strip
+      [0.32, 0.58].forEach((syRatio, sIdx) => {
+        const sy = Math.round(cbTop + cbTotalH * syRatio);
+        ctx.fillStyle = '#5c3b1e';
+        ctx.fillRect(cbX + 8, sy, cbW - 16, 9);
+        ctx.strokeStyle = '#2a1b0e';
+        ctx.strokeRect(cbX + 8, sy, cbW - 16, 9);
+        // LED line under shelf
+        ctx.fillStyle = '#ffe599';
+        ctx.fillRect(cbX + 12, sy + 9, cbW - 24, 2);
+
+        // Coffee canisters & ceramic mugs on shelves
+        ctx.fillStyle = '#f7f3ec';
+        ctx.strokeStyle = '#3a2e25';
+        ctx.lineWidth = 1.2;
+        if (sIdx === 0) {
+          ctx.fillRect(cbX + 22, sy - 22, 18, 22);
+          ctx.strokeRect(cbX + 22, sy - 22, 18, 22);
+          ctx.fillRect(cbX + 46, sy - 18, 16, 18);
+          ctx.strokeRect(cbX + 46, sy - 18, 16, 18);
+        } else {
+          for (let m = 0; m < 3; m++) {
+            const mx = cbX + 20 + m * 26;
+            ctx.fillRect(mx, sy - 14, 14, 14);
+            ctx.strokeRect(mx, sy - 14, 14, 14);
           }
         }
+      });
 
-        const finalAlpha = bestMask * zoneWeight * 0.9;
-        if (finalAlpha <= 0.03) continue;
+      // Espresso Machine on the counter
+      const emW = Math.round(cbW * 0.46);
+      const emH = Math.round(bsH * 0.52);
+      const emX = cbX + Math.round((cbW - emW) / 2);
+      const emY = ctTop - emH;
+      ctx.fillStyle = '#2b2623';
+      ctx.fillRect(emX, emY, emW, emH);
+      ctx.strokeStyle = '#c59b57';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(emX, emY, emW, emH);
+      ctx.fillStyle = '#d4af37';
+      ctx.fillRect(emX + 6, emY + 8, emW - 12, 6);
+      // White espresso cup
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(emX + Math.round(emW * 0.35), emY + emH - 12, 14, 10);
+    }
 
-        // Luminance-preserving polyurethane finish (keeps door grooves, bevels, and 3D shadows)
-        const pixLum = lum255 / 255;
-        const shadeDelta = (pixLum - refLum) * 0.82;
-        const outLum = Math.max(0.05, Math.min(0.97, tLum + shadeDelta));
-        const scale = outLum / Math.max(0.06, tLum);
+    // 7. Lower Base Cabinets & Drawer Stack (painted in lowerRGB)
+    // Dark recessed toe-kick (پاخور کابینت)
+    ctx.fillStyle = '#2b241f';
+    ctx.fillRect(cabLeft + 4, lowerBot, cabW - 8, Math.round(h * 0.03));
 
-        const paintedR = clampByte(tr * scale);
-        const paintedG = clampByte(tg * scale);
-        const paintedB = clampByte(tb * scale);
+    for (let c = 0; c < numCols; c++) {
+      const lx = Math.round(cabLeft + c * colW);
+      const lw = Math.round(colW);
+      if (c === 1 || c === 3) {
+        // 3-Drawer bank module
+        const dH1 = Math.round(lowerH * 0.26);
+        const dH2 = Math.round(lowerH * 0.35);
+        const dH3 = lowerH - dH1 - dH2;
+        drawShakerCabinetDoor(ctx, lx, lowerTop, lw, dH1, lowerRGB, 'center-top');
+        drawShakerCabinetDoor(ctx, lx, lowerTop + dH1, lw, dH2, lowerRGB, 'center-top');
+        drawShakerCabinetDoor(ctx, lx, lowerTop + dH1 + dH2, lw, dH3, lowerRGB, 'center-top');
+      } else {
+        const halfW = Math.floor(lw / 2);
+        drawShakerCabinetDoor(ctx, lx, lowerTop, halfW, lowerH, lowerRGB, 'top-right');
+        drawShakerCabinetDoor(ctx, lx + halfW, lowerTop, lw - halfW, lowerH, lowerRGB, 'top-left');
+      }
+    }
 
-        d[idx] = clampByte(r * (1 - finalAlpha) + paintedR * finalAlpha);
-        d[idx + 1] = clampByte(g * (1 - finalAlpha) + paintedG * finalAlpha);
-        d[idx + 2] = clampByte(b * (1 - finalAlpha) + paintedB * finalAlpha);
+    // 8. Countertop Slab (صفحه کابینت) + Sink & Faucet + Cooktop
+    const ctX = cabLeft - 6;
+    const ctW = cabW + 12;
+    if (hasCountertop) {
+      // Luxury White Veined Quartz Countertop
+      const qGrad = ctx.createLinearGradient(ctX, ctTop, ctX + ctW, ctBot);
+      qGrad.addColorStop(0, '#fcfaf7');
+      qGrad.addColorStop(0.5, '#f3eee6');
+      qGrad.addColorStop(1, '#e8e0d4');
+      ctx.fillStyle = qGrad;
+      ctx.fillRect(ctX, ctTop, ctW, ctH);
+
+      // Subtle quartz veins along countertop edge
+      ctx.strokeStyle = 'rgba(165, 140, 105, 0.45)';
+      ctx.lineWidth = 1.3;
+      for (let qv = 0; qv < 8; qv++) {
+        const vx = ctX + 40 + qv * (ctW / 8);
+        ctx.beginPath();
+        ctx.moveTo(vx, ctTop + 2);
+        ctx.lineTo(vx + 22, ctBot - 2);
+        ctx.stroke();
+      }
+    } else {
+      // Standard warm stone/wood-tone countertop
+      const sGrad = ctx.createLinearGradient(ctX, ctTop, ctX, ctBot);
+      sGrad.addColorStop(0, '#c8b8a4');
+      sGrad.addColorStop(1, '#a89680');
+      ctx.fillStyle = sGrad;
+      ctx.fillRect(ctX, ctTop, ctW, ctH);
+    }
+    ctx.strokeStyle = 'rgba(42, 33, 27, 0.8)';
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(ctX, ctTop, ctW, ctH);
+
+    // Architectural Faucet & Sink on column 2
+    const sinkX = Math.round(cabLeft + 2.5 * colW);
+    ctx.strokeStyle = '#3a2e25';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(sinkX, ctTop);
+    ctx.lineTo(sinkX, ctTop - 34);
+    ctx.arc(sinkX - 12, ctTop - 34, 12, 0, Math.PI, true);
+    ctx.lineTo(sinkX - 24, ctTop - 22);
+    ctx.stroke();
+
+    // Induction Cooktop on column 1
+    const cookX = Math.round(cabLeft + 1.15 * colW);
+    const cookW = Math.round(colW * 0.7);
+    ctx.fillStyle = '#231f1d';
+    ctx.fillRect(cookX, ctTop + 2, cookW, 6);
+
+    // 9. Foreground 3D Kitchen Island (ساخت جزیره آشپزخانه) if active
+    if (hasIsland) {
+      const islW = Math.round(w * 0.56);
+      const islH = Math.round(h * 0.24);
+      const islX = Math.round((w - islW) / 2);
+      const islY = Math.round(h * 0.66);
+
+      // Soft floor shadow under island
+      ctx.fillStyle = 'rgba(28, 22, 17, 0.28)';
+      ctx.beginPath();
+      ctx.ellipse(islX + islW / 2, islY + islH + 6, islW * 0.53, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Island cabinet body painted in lowerRGB with 3 Shaker panels
+      const islTopH = 18;
+      const islBodyY = islY + islTopH;
+      const islBodyH = islH - islTopH;
+      const islCols = 3;
+      const islColW = islW / islCols;
+      for (let ic = 0; ic < islCols; ic++) {
+        drawShakerCabinetDoor(
+          ctx,
+          Math.round(islX + ic * islColW),
+          islBodyY,
+          Math.round(islColW),
+          islBodyH,
+          lowerRGB,
+          'center-top'
+        );
+      }
+
+      // Overhanging Waterfall Quartz Stone Countertop on Island
+      const iqGrad = ctx.createLinearGradient(islX - 14, islY, islX + islW + 14, islY + islTopH);
+      iqGrad.addColorStop(0, '#fcfaf6');
+      iqGrad.addColorStop(0.5, '#f2ece2');
+      iqGrad.addColorStop(1, '#e4dcd0');
+      ctx.fillStyle = iqGrad;
+      ctx.fillRect(islX - 14, islY, islW + 28, islTopH);
+      ctx.strokeStyle = 'rgba(42, 33, 27, 0.85)';
+      ctx.lineWidth = 1.8;
+      ctx.strokeRect(islX - 14, islY, islW + 28, islTopH);
+
+      // Waterfall side legs in quartz
+      ctx.fillStyle = '#ebe4d8';
+      ctx.fillRect(islX - 12, islY + islTopH, 12, islBodyH);
+      ctx.strokeRect(islX - 12, islY + islTopH, 12, islBodyH);
+      ctx.fillRect(islX + islW, islY + islTopH, 12, islBodyH);
+      ctx.strokeRect(islX + islW, islY + islTopH, 12, islBodyH);
+
+      // Two Minimalist Architectural Barstools in front of Island
+      [0.34, 0.66].forEach((bxRatio) => {
+        const bx = Math.round(islX + islW * bxRatio);
+        const by = islY + Math.round(islH * 0.42);
+        // Seat
+        ctx.fillStyle = '#7a542e';
+        ctx.strokeStyle = '#2a1e17';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.ellipse(bx, by, 26, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Slender metal legs
+        ctx.strokeStyle = '#2a221c';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(bx - 16, by + 6);
+        ctx.lineTo(bx - 22, islY + islH + 8);
+        ctx.moveTo(bx + 16, by + 6);
+        ctx.lineTo(bx + 22, islY + islH + 8);
+        ctx.moveTo(bx - 19, by + 42);
+        ctx.lineTo(bx + 19, by + 42);
+        ctx.stroke();
+      });
+    }
+
+    // 10. If User Uploaded a Kitchen Photo, Draw Blueprint Sketch Inset Card in Top-Left Corner
+    if (userImg) {
+      const cardW = 196;
+      const cardH = 148;
+      const cardX = 16;
+      const cardY = 16;
+
+      ctx.fillStyle = 'rgba(34, 27, 22, 0.9)';
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 1.8;
+      ctx.fillRect(cardX, cardY, cardW, cardH);
+      ctx.strokeRect(cardX, cardY, cardW, cardH);
+
+      const miniCanvas = createMiniInkSketchCanvas(userImg, cardW - 16, cardH - 38);
+      ctx.drawImage(miniCanvas, cardX + 8, cardY + 28);
+
+      ctx.fillStyle = '#f3d49c';
+      ctx.font = 'bold 12px Vazirmatn, Tahoma, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('اسکیچ استخراج‌شده از عکس شما', cardX + cardW - 10, cardY + 19);
+    }
+
+    // 11. Architectural Legend Footer Bar inside Canvas
+    const barH = 40;
+    ctx.fillStyle = 'rgba(34, 27, 22, 0.88)';
+    ctx.fillRect(0, h - barH, w, barH);
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h - barH);
+    ctx.lineTo(w, h - barH);
+    ctx.stroke();
+
+    // Swatch circles for Upper & Lower paint
+    ctx.fillStyle = rgbCss(upperRGB);
+    ctx.fillRect(w - 34, h - 29, 18, 18);
+    ctx.strokeStyle = '#fff';
+    ctx.strokeRect(w - 34, h - 29, 18, 18);
+
+    ctx.fillStyle = rgbCss(lowerRGB);
+    ctx.fillRect(w - 58, h - 29, 18, 18);
+    ctx.strokeRect(w - 58, h - 29, 18, 18);
+
+    const activeAddonsList = [];
+    if (hasIsland) activeAddonsList.push('ساخت جزیره');
+    if (hasCoffeeBar) activeAddonsList.push('کافی‌بار');
+    if (hasCountertop) activeAddonsList.push('صفحه کوارتز');
+    if (hasBacksplash) activeAddonsList.push('اسلب بین‌کابینتی');
+
+    const summaryLine =
+      activeAddonsList.length > 0
+        ? `رندر معماری: ${paintLabel} + ${activeAddonsList.join(' + ')}`
+        : `رندر و اسکیچ معماری نوکابین: ${paintLabel}`;
+
+    ctx.fillStyle = '#f7f3ec';
+    ctx.font = 'bold 14px Vazirmatn, Tahoma, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(summaryLine, w - 70, h - 15);
+
+    ctx.restore();
+  }
+
+  // MODE 2: Architectural Sobel Ink Line Sketch Directly from User's Uploaded Photo + Smooth Color Wash
+  function renderSobelLineSketchFromUserPhoto(ctx, w, h, srcImg) {
+    const { upper: upperRGB, lower: lowerRGB, label: paintLabel } = getActivePaintColors();
+    ctx.save();
+
+    // Draw scaled source image to extract luminance & smooth Sobel edges
+    ctx.drawImage(srcImg, 0, 0, w, h);
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+
+    const lum = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      const p = i * 4;
+      lum[i] = 0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2];
+    }
+
+    for (let y = 0; y < h; y++) {
+      const ny = y / h;
+      // Smooth architectural marker wash bands (no pixel color thresholding -> zero blotches!)
+      const upperBand = smoothstep(0.08, 0.16, ny) * (1 - smoothstep(0.36, 0.44, ny));
+      const lowerBand = smoothstep(0.50, 0.57, ny) * (1 - smoothstep(0.84, 0.92, ny));
+
+      for (let x = 0; x < w; x++) {
+        const nx = x / w;
+        const horizMask = smoothstep(0.04, 0.10, nx) * (1 - smoothstep(0.90, 0.96, nx));
+        const idx = y * w + x;
+
+        let edgeMag = 0;
+        if (x > 0 && x < w - 1 && y > 0 && y < h - 1) {
+          const gx =
+            -lum[(y - 1) * w + (x - 1)] +
+            lum[(y - 1) * w + (x + 1)] -
+            2 * lum[y * w + (x - 1)] +
+            2 * lum[y * w + (x + 1)] -
+            lum[(y + 1) * w + (x - 1)] +
+            lum[(y + 1) * w + (x + 1)];
+          const gy =
+            -lum[(y - 1) * w + (x - 1)] -
+            2 * lum[(y - 1) * w + x] -
+            lum[(y - 1) * w + (x + 1)] +
+            lum[(y + 1) * w + (x - 1)] +
+            2 * lum[(y + 1) * w + x] +
+            lum[(y + 1) * w + (x + 1)];
+          edgeMag = Math.min(1, Math.sqrt(gx * gx + gy * gy) / 195);
+        }
+
+        // Warm architectural parchment paper base + soft tonal shading from original luminance
+        const normLum = lum[idx] / 255;
+        const softTone = 0.82 + normLum * 0.18;
+        let pr = 250 * softTone;
+        let pg = 245 * softTone;
+        let pb = 236 * softTone;
+
+        // Blend smooth architectural marker wash of selected polyurethane color
+        const uWash = upperBand * horizMask * 0.62;
+        const lWash = lowerBand * horizMask * 0.68;
+        if (uWash > 0.01) {
+          pr = pr * (1 - uWash) + upperRGB.r * softTone * uWash;
+          pg = pg * (1 - uWash) + upperRGB.g * softTone * uWash;
+          pb = pb * (1 - uWash) + upperRGB.b * softTone * uWash;
+        }
+        if (lWash > 0.01) {
+          pr = pr * (1 - lWash) + lowerRGB.r * softTone * lWash;
+          pg = pg * (1 - lWash) + lowerRGB.g * softTone * lWash;
+          pb = pb * (1 - lWash) + lowerRGB.b * softTone * lWash;
+        }
+
+        // Overlay crisp architectural espresso ink lines
+        const ink = Math.pow(edgeMag, 0.85) * 0.88;
+        const p = idx * 4;
+        d[p] = clampByte(pr * (1 - ink) + 38 * ink);
+        d[p + 1] = clampByte(pg * (1 - ink) + 29 * ink);
+        d[p + 2] = clampByte(pb * (1 - ink) + 22 * ink);
+        d[p + 3] = 255;
       }
     }
 
     ctx.putImageData(imgData, 0, 0);
 
-    // Overlay visual previews for structural/surface addons on the user's photo
-    if (activeAddonIds.has('change_backsplash')) {
-      const bsTop = Math.round(targetH * 0.37);
-      const bsHeight = Math.round(targetH * 0.12);
-      ctx.save();
-      const grad = ctx.createLinearGradient(0, bsTop, 0, bsTop + bsHeight);
-      grad.addColorStop(0, 'rgba(246, 236, 218, 0.78)');
-      grad.addColorStop(0.5, 'rgba(235, 224, 206, 0.72)');
-      grad.addColorStop(1, 'rgba(225, 212, 192, 0.76)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(Math.round(targetW * 0.08), bsTop, Math.round(targetW * 0.84), bsHeight);
-
-      // Subtle warm LED strip glow under upper cabinets
-      const ledGrad = ctx.createLinearGradient(0, bsTop, 0, bsTop + Math.round(bsHeight * 0.35));
-      ledGrad.addColorStop(0, 'rgba(255, 214, 140, 0.75)');
-      ledGrad.addColorStop(1, 'rgba(255, 214, 140, 0)');
-      ctx.fillStyle = ledGrad;
-      ctx.fillRect(Math.round(targetW * 0.08), bsTop, Math.round(targetW * 0.84), Math.round(bsHeight * 0.35));
-      ctx.restore();
-    }
-
-    if (activeAddonIds.has('refinish_countertop')) {
-      const ctY = Math.round(targetH * 0.49);
-      const ctH = Math.round(targetH * 0.055);
-      ctx.save();
-      const ctGrad = ctx.createLinearGradient(0, ctY, 0, ctY + ctH);
-      ctGrad.addColorStop(0, 'rgba(250, 247, 240, 0.88)');
-      ctGrad.addColorStop(1, 'rgba(230, 222, 210, 0.88)');
-      ctx.fillStyle = ctGrad;
-      ctx.fillRect(Math.round(targetW * 0.07), ctY, Math.round(targetW * 0.86), ctH);
-      ctx.restore();
-    }
-
-    if (activeAddonIds.has('add_coffeebar')) {
-      const cbX = Math.round(targetW * 0.70);
-      const cbY = Math.round(targetH * 0.34);
-      const cbW = Math.round(targetW * 0.22);
-      const cbH = Math.round(targetH * 0.20);
-      ctx.save();
-      // Warm backlight glow
-      const glow = ctx.createRadialGradient(cbX + cbW / 2, cbY + cbH / 2, 6, cbX + cbW / 2, cbY + cbH / 2, cbW * 0.8);
-      glow.addColorStop(0, 'rgba(255, 208, 132, 0.55)');
-      glow.addColorStop(1, 'rgba(255, 208, 132, 0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(cbX - 10, cbY - 10, cbW + 20, cbH + 20);
-
-      // Two floating wood shelves
-      ctx.fillStyle = '#7a542e';
-      ctx.fillRect(cbX, cbY + Math.round(cbH * 0.22), cbW, 7);
-      ctx.fillRect(cbX, cbY + Math.round(cbH * 0.52), cbW, 7);
-
-      // Espresso machine & cups silhouette on counter
-      ctx.fillStyle = '#26201b';
-      ctx.fillRect(cbX + Math.round(cbW * 0.15), cbY + Math.round(cbH * 0.62), Math.round(cbW * 0.34), Math.round(cbH * 0.34));
-      ctx.fillStyle = '#f5efe6';
-      ctx.fillRect(cbX + Math.round(cbW * 0.60), cbY + Math.round(cbH * 0.36), 12, 12);
-      ctx.fillRect(cbX + Math.round(cbW * 0.74), cbY + Math.round(cbH * 0.36), 12, 12);
-      ctx.restore();
-    }
-
-    if (activeAddonIds.has('add_island')) {
-      const islW = Math.round(targetW * 0.54);
-      const islH = Math.round(targetH * 0.26);
-      const islX = Math.round((targetW - islW) / 2);
-      const islY = Math.round(targetH * 0.67);
-      ctx.save();
-      // Floor shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
-      ctx.beginPath();
-      ctx.ellipse(islX + islW / 2, islY + islH + 4, islW * 0.52, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Island cabinet body painted in selected lower cabinet polyurethane color
-      ctx.fillStyle = `rgb(${lowerRGB.r}, ${lowerRGB.g}, ${lowerRGB.b})`;
-      ctx.fillRect(islX, islY + 14, islW, islH - 14);
-
-      // Recessed panel lines on island
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
-      ctx.lineWidth = 2;
-      const panelW = Math.floor((islW - 36) / 3);
-      for (let p = 0; p < 3; p++) {
-        ctx.strokeRect(islX + 12 + p * (panelW + 6), islY + 24, panelW, islH - 34);
-      }
-
-      // Quartz stone countertop overhang
-      ctx.fillStyle = '#f5f0e6';
-      ctx.fillRect(islX - 8, islY, islW + 16, 15);
-      ctx.strokeStyle = '#d5cbbd';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(islX - 8, islY, islW + 16, 15);
-      ctx.restore();
-    }
+    // Footer caption on sketch
+    ctx.fillStyle = 'rgba(34, 27, 22, 0.88)';
+    ctx.fillRect(0, h - 38, w, 38);
+    ctx.fillStyle = '#f3d49c';
+    ctx.font = 'bold 14px Vazirmatn, Tahoma, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`اسکیچ خطی معماری از عکس شما — رنگ: ${paintLabel}`, w - 18, h - 14);
+    ctx.restore();
   }
 
-  // Click on canvas to calibrate exact cabinet door color from user's photo
-  if (studioPreviewCanvas) {
-    studioPreviewCanvas.addEventListener('click', (e) => {
-      if (activeUserSlotIdx < 0) return;
-      const img = studioSlotImages[activeUserSlotIdx];
-      const profile = studioSlotProfiles[activeUserSlotIdx];
-      if (!img || !profile) return;
+  // Master Canvas Renderer for AI Studio
+  function renderStudioCanvas() {
+    if (!studioPreviewCanvas) return;
+    const targetW = 960;
+    const targetH = 720;
+    studioPreviewCanvas.width = targetW;
+    studioPreviewCanvas.height = targetH;
+    const ctx = studioPreviewCanvas.getContext('2d');
 
-      const rect = studioPreviewCanvas.getBoundingClientRect();
-      const relX = (e.clientX - rect.left) / Math.max(1, rect.width);
-      const relY = (e.clientY - rect.top) / Math.max(1, rect.height);
+    const userImg = activeUserSlotIdx >= 0 ? studioSlotImages[activeUserSlotIdx] : null;
+    const baseImg = userImg || defaultSampleBeforeImg;
 
-      const off = document.createElement('canvas');
-      off.width = 160;
-      off.height = 120;
-      const octx = off.getContext('2d');
-      octx.drawImage(img, 0, 0, 160, 120);
-      const sx = Math.max(2, Math.min(157, Math.round(relX * 160)));
-      const sy = Math.max(2, Math.min(117, Math.round(relY * 120)));
-      const patch = octx.getImageData(sx - 2, sy - 2, 5, 5).data;
-
-      let rSum = 0;
-      let gSum = 0;
-      let bSum = 0;
-      const count = 25;
-      for (let i = 0; i < patch.length; i += 4) {
-        rSum += patch[i];
-        gSum += patch[i + 1];
-        bSum += patch[i + 2];
+    if (studioViewMode === 'before') {
+      if (baseImg) {
+        ctx.drawImage(baseImg, 0, 0, targetW, targetH);
       }
-      const r = rSum / count;
-      const g = gSum / count;
-      const b = bSum / count;
+      return;
+    }
 
-      profile.userSampled.unshift({
-        r,
-        g,
-        b,
-        lum: (0.299 * r + 0.587 * g + 0.114 * b) / 255,
-        tolerance: 105,
-      });
-      if (profile.userSampled.length > 3) {
-        profile.userSampled.pop();
+    if (studioViewMode === 'sketch') {
+      if (baseImg) {
+        renderSobelLineSketchFromUserPhoto(ctx, targetW, targetH, baseImg);
+      } else {
+        renderArchitectural3DSketch(ctx, targetW, targetH, null);
       }
+      return;
+    }
 
-      showingBeforeInStudio = false;
-      updateStudioPreviewUI();
-      showToast('رنگ سطح انتخاب‌شده به الگوی کابینت عکس شما اضافه شد و رنگ جدید اعمال گردید.', 'success');
-    });
+    // Default: studioViewMode === 'render' (Clean 3D Architectural Sketch & Render)
+    renderArchitectural3DSketch(ctx, targetW, targetH, userImg);
   }
 
   function getUploadedStudioFiles() {
@@ -543,7 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.innerHTML = `<i class="fa-solid fa-camera"></i> عکس ${toPersianDigits(slotIdx + 1)} شما`;
           btn.addEventListener('click', () => {
             activeUserSlotIdx = slotIdx;
-            showingBeforeInStudio = false;
+            if (studioViewMode === 'before') studioViewMode = 'render';
             updateStudioSlotsUI();
             updateStudioPreviewUI();
           });
@@ -559,7 +1015,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (switchToSampleBtn) {
     switchToSampleBtn.addEventListener('click', () => {
       activeUserSlotIdx = -1;
-      showingBeforeInStudio = false;
       updateStudioSlotsUI();
       updateStudioPreviewUI();
     });
@@ -577,13 +1032,15 @@ document.addEventListener('DOMContentLoaded', () => {
         img.onload = () => {
           studioSlotFiles[slotIdx] = file;
           studioSlotImages[slotIdx] = img;
-          studioSlotProfiles[slotIdx] = buildCabinetProfile(img);
           activeUserSlotIdx = slotIdx;
-          showingBeforeInStudio = false;
+          studioViewMode = 'render';
           updateStudioSlotsUI();
           updateStudioPreviewUI();
           syncStudioFilesToInspectionForm();
-          showToast(`عکس ${toPersianDigits(slotIdx + 1)} شما بارگذاری شد! حالا روی رنگ‌های مختلف کلیک کنید تا روی عکس شما اعمال شود.`, 'success');
+          showToast(
+            `عکس ${toPersianDigits(slotIdx + 1)} شما دریافت شد و اسکیچ و رندر هوشمند آشپزخانه ساخته شد!`,
+            'success'
+          );
         };
         img.src = ev.target.result;
       };
@@ -599,7 +1056,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const idx = Number(btn.dataset.removeSlot);
       studioSlotFiles[idx] = null;
       studioSlotImages[idx] = null;
-      studioSlotProfiles[idx] = null;
       if (activeUserSlotIdx === idx) {
         const nextAvailable = studioSlotImages.findIndex(Boolean);
         activeUserSlotIdx = nextAvailable; // either 0..2 or -1
@@ -607,6 +1063,14 @@ document.addEventListener('DOMContentLoaded', () => {
       updateStudioSlotsUI();
       updateStudioPreviewUI();
       syncStudioFilesToInspectionForm();
+    });
+  });
+
+  // Mode Tabs (Render 3D / Line Sketch / Original Photo)
+  document.querySelectorAll('#studioModeTabs .studio-mode-tab').forEach((tabBtn) => {
+    tabBtn.addEventListener('click', () => {
+      studioViewMode = tabBtn.dataset.studioMode || 'render';
+      updateStudioPreviewUI();
     });
   });
 
@@ -621,88 +1085,71 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('#studioAddonOptions .studio-option-btn').forEach((btn) => {
       btn.classList.toggle('active', activeAddonIds.has(btn.dataset.optionId));
     });
+    document.querySelectorAll('#studioModeTabs .studio-mode-tab').forEach((tabBtn) => {
+      tabBtn.classList.toggle('active', tabBtn.dataset.studioMode === studioViewMode);
+    });
 
     const isUsingUserPhoto = activeUserSlotIdx >= 0 && Boolean(studioSlotImages[activeUserSlotIdx]);
-
     if (calibrationHint) {
       calibrationHint.classList.toggle('visible', isUsingUserPhoto);
     }
 
-    if (isUsingUserPhoto) {
-      // Show canvas with user's own uploaded photo + live color/addon rendering
+    // Always render via the clean Architectural Sketch & 3D Render Canvas when:
+    // - user uploaded a photo, OR
+    // - custom palette swatch is selected, OR
+    // - multiple addons are combined, OR
+    // - user is in 'sketch' or 'render' mode
+    const useCanvasEngine =
+      isUsingUserPhoto ||
+      Boolean(customPaletteSelection) ||
+      activeAddonIds.size > 0 ||
+      studioViewMode === 'sketch' ||
+      studioViewMode === 'render';
+
+    if (useCanvasEngine && studioPreviewCanvas) {
       if (studioPreviewImg) studioPreviewImg.style.display = 'none';
-      if (studioPreviewCanvas) studioPreviewCanvas.style.display = 'block';
-      renderUserPhotoToCanvas();
-
-      const paintInfo = getActivePaintColors();
-      if (studioPreviewBadge) {
-        studioPreviewBadge.textContent = showingBeforeInStudio
-          ? `عکس اصلی آشپزخانه شما (قبل از بازسازی)`
-          : `اعمال روی عکس شما: ${paintInfo.label}`;
-      }
-      if (studioPreviewTitle) {
-        studioPreviewTitle.textContent = customPaletteSelection
-          ? `رنگ انتخابی از کالیته: ${customPaletteSelection.name}`
-          : focused.title;
-      }
-      if (studioPreviewDesc) {
-        studioPreviewDesc.textContent = customPaletteSelection
-          ? `پیش‌نمایش رنگ «${customPaletteSelection.name}» از کالیته پلی‌اورتان روی عکس آشپزخانه شما (برای کالیبره کردن دقیق‌تر، روی درب کابینت در عکس کلیک کنید).`
-          : focused.desc;
-      }
-    } else {
-      // Using site's default sample kitchen photos
+      studioPreviewCanvas.style.display = 'block';
+      renderStudioCanvas();
+    } else if (studioPreviewImg) {
       if (studioPreviewCanvas) studioPreviewCanvas.style.display = 'none';
-      if (studioPreviewImg) {
-        studioPreviewImg.style.display = 'block';
-        studioPreviewImg.src = showingBeforeInStudio ? focused.beforeImage : focused.previewImage;
-      }
+      studioPreviewImg.style.display = 'block';
+      studioPreviewImg.src = studioViewMode === 'before' ? focused.beforeImage : focused.previewImage;
+    }
 
-      if ( customPaletteSelection && !showingBeforeInStudio && studioPreviewCanvas && studioPreviewImg ) {
-        // If user selected a custom color from کالیته on the default sample image, render it on canvas using before-1.jpg!
-        if (!window.__defaultBeforeImg) {
-          const sampleImg = new Image();
-          sampleImg.onload = () => {
-            window.__defaultBeforeImg = sampleImg;
-            window.__defaultBeforeProfile = buildCabinetProfile(sampleImg);
-            updateStudioPreviewUI();
-          };
-          sampleImg.src = '/assets/before-1.jpg';
-        } else {
-          studioPreviewImg.style.display = 'none';
-          studioPreviewCanvas.style.display = 'block';
-          const prevSlot = activeUserSlotIdx;
-          studioSlotImages[99] = window.__defaultBeforeImg;
-          studioSlotProfiles[99] = window.__defaultBeforeProfile;
-          activeUserSlotIdx = 99;
-          renderUserPhotoToCanvas();
-          activeUserSlotIdx = prevSlot;
-        }
-      }
-
-      if (studioPreviewBadge) {
-        studioPreviewBadge.textContent = showingBeforeInStudio
-          ? 'نمای قبل از بازسازی (کابینت قهوه‌ای قدیمی)'
-          : customPaletteSelection
-            ? `پیش‌نمایش کالیته: ${customPaletteSelection.name}`
-            : focused.badge;
-      }
-      if (studioPreviewTitle) {
-        studioPreviewTitle.textContent = customPaletteSelection
-          ? `رنگ انتخابی از کالیته: ${customPaletteSelection.name}`
-          : focused.title;
-      }
-      if (studioPreviewDesc) {
-        studioPreviewDesc.textContent = customPaletteSelection
-          ? `اجرای رنگ پلی‌اورتان «${customPaletteSelection.name}» از کالیته تخصصی نوکابین.`
-          : focused.desc;
+    const paintInfo = getActivePaintColors();
+    if (studioPreviewBadge) {
+      if (studioViewMode === 'before') {
+        studioPreviewBadge.textContent = isUsingUserPhoto
+          ? 'نمای عکس اصلی آپلودشده شما (قبل از بازسازی)'
+          : 'نمای عکس اصلی قبل از بازسازی';
+      } else if (studioViewMode === 'sketch') {
+        studioPreviewBadge.textContent = `اسکیچ خطی معماری: ${paintInfo.label}`;
+      } else {
+        studioPreviewBadge.textContent = `رندر و اسکیچ سه‌بعدی: ${paintInfo.label}`;
       }
     }
 
+    if (studioPreviewTitle) {
+      studioPreviewTitle.textContent = customPaletteSelection
+        ? `رنگ انتخابی از کالیته: ${customPaletteSelection.name}`
+        : focused.title;
+    }
+    if (studioPreviewDesc) {
+      studioPreviewDesc.textContent = customPaletteSelection
+        ? `اجرای رنگ پلی‌اورتان «${customPaletteSelection.name}» از کالیته تخصصی نوکابین روی رندر و اسکیچ معماری آشپزخانه.`
+        : focused.desc;
+    }
+
     if (studioCompareToggleBtn) {
-      studioCompareToggleBtn.innerHTML = showingBeforeInStudio
-        ? '<i class="fa-solid fa-wand-magic-sparkles"></i> بازگشت به پیش‌نمایش بعد از بازسازی'
-        : '<i class="fa-solid fa-eye"></i> نمایش عکس قبل از بازسازی';
+      if (studioViewMode === 'render') {
+        studioCompareToggleBtn.innerHTML =
+          '<i class="fa-solid fa-pen-ruler"></i> مشاهده اسکیچ خطی مستقیم از عکس شما';
+      } else if (studioViewMode === 'sketch') {
+        studioCompareToggleBtn.innerHTML = '<i class="fa-solid fa-image"></i> مشاهده عکس اصلی (قبل از بازسازی)';
+      } else {
+        studioCompareToggleBtn.innerHTML =
+          '<i class="fa-solid fa-cubes"></i> بازگشت به رندر و اسکیچ سه‌بعدی بازسازی';
+      }
     }
 
     // Calculate total estimate based on base 70M + selected color + selected addons
@@ -730,7 +1177,7 @@ document.addEventListener('DOMContentLoaded', () => {
       activeColorOptionId = optId;
       focusedOptionId = optId;
       customPaletteSelection = null;
-      showingBeforeInStudio = false;
+      if (studioViewMode === 'before') studioViewMode = 'render';
       document.querySelectorAll('#paletteSwatchesList .palette-chip').forEach((c) => c.classList.remove('active'));
       updateStudioPreviewUI();
     });
@@ -746,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         upperHex: chip.dataset.paletteHex || '#e6dfd3',
         lowerHex: chip.dataset.paletteLower || chip.dataset.paletteHex || '#c4b7a6',
       };
-      showingBeforeInStudio = false;
+      if (studioViewMode === 'before') studioViewMode = 'render';
       updateStudioPreviewUI();
     });
   });
@@ -761,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         upperHex: hex,
         lowerHex: hex,
       };
-      showingBeforeInStudio = false;
+      if (studioViewMode === 'before') studioViewMode = 'render';
       updateStudioPreviewUI();
     });
   }
@@ -770,24 +1217,33 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('#studioAddonOptions .studio-option-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const optId = btn.dataset.optionId;
-      if (activeAddonIds.has(optId) && focusedOptionId === optId) {
+      if (activeAddonIds.has(optId)) {
         activeAddonIds.delete(optId);
         focusedOptionId = activeColorOptionId;
       } else {
         activeAddonIds.add(optId);
         focusedOptionId = optId;
       }
-      showingBeforeInStudio = false;
+      if (studioViewMode === 'before') studioViewMode = 'render';
       updateStudioPreviewUI();
     });
   });
 
   if (studioCompareToggleBtn) {
     studioCompareToggleBtn.addEventListener('click', () => {
-      showingBeforeInStudio = !showingBeforeInStudio;
+      if (studioViewMode === 'render') {
+        studioViewMode = 'sketch';
+      } else if (studioViewMode === 'sketch') {
+        studioViewMode = 'before';
+      } else {
+        studioViewMode = 'render';
+      }
       updateStudioPreviewUI();
     });
   }
+
+  // Initial render on page load
+  updateStudioPreviewUI();
 
   // AI Analyze Button
   const analyzeKitchenBtn = document.getElementById('analyzeKitchenBtn');
@@ -803,13 +1259,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (aiAnalysisBox) {
           aiAnalysisBox.classList.add('visible');
         }
-        showToast('لطفاً ۱ تا ۳ عکس از آشپزخانه خود در کادرهای بالا انتخاب کنید تا رنگ‌ها روی عکس خودتان نمایش داده شود.', 'info');
+        studioViewMode = 'render';
+        updateStudioPreviewUI();
+        showToast('اسکیچ و رندر نمونه آماده است! می‌توانید ۱ تا ۳ عکس از آشپزخانه خود نیز آپلود کنید.', 'info');
         return;
       }
 
       analyzeKitchenBtn.disabled = true;
       const origHtml = analyzeKitchenBtn.innerHTML;
-      analyzeKitchenBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> در حال تحلیل تصاویر آشپزخانه شما...';
+      analyzeKitchenBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> در حال ساخت اسکیچ و رندر هوشمند...';
 
       try {
         const fd = new FormData();
@@ -833,14 +1291,13 @@ document.addEventListener('DOMContentLoaded', () => {
           aiScoreBadge.textContent = `امتیاز صرفه اقتصادی بازسازی: ${toPersianDigits(data.analysis.feasibilityScore)}٪`;
         }
 
-        // Ensure user's uploaded photo is active and rendered with the current color
         if (activeUserSlotIdx < 0) {
           activeUserSlotIdx = studioSlotImages.findIndex(Boolean);
         }
-        showingBeforeInStudio = false;
+        studioViewMode = 'render';
         updateStudioPreviewUI();
 
-        showToast('تحلیل آشپزخانه شما انجام شد! اکنون با کلیک روی هر رنگ یا کالیته، تغییر را روی عکس خودتان ببینید.', 'success');
+        showToast('اسکیچ و رندر معماری آشپزخانه شما ساخته شد! اکنون رنگ‌ها و گزینه‌ها را روی رندر امتحان کنید.', 'success');
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
