@@ -154,315 +154,157 @@
   <section class="section" id="ai-studio">
     <div class="container">
       <div class="section-header">
-        <span class="section-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> استودیو هوشمند نوکابین</span>
-        <h2>آپلود ۳ عکس و مشاهده اسکیچ و رندر تغییرات</h2>
-        <p>حداکثر ۳ عکس از آشپزخانه آپلود کنید و رنگ کالیته یا گزینه‌های ارتقا را روی اسکیچ و رندر سه‌بعدی ببینید.</p>
+        <span class="section-badge"><i class="fa-solid fa-swatchbook"></i> کاتالوگ تعاملی بازسازی نوکابین</span>
+        <h2>آشپزخانه خود را بازسازی‌شده ببینید</h2>
+        <p>روی یک آشپزخانه واقعی آپارتمانی ایرانی، رنگ پلی‌اورتان، دستگیره، صفحه و نوع پرداخت را انتخاب کنید و نتیجه را فوری ببینید.</p>
       </div>
 
       <div class="studio-shell">
         <div class="studio-grid">
-          <!-- Right Column: Uploader + Palette Only + Addons -->
-          <div>
-            <div class="studio-step-title">
-              <span class="step-num">۱</span>
-              <span>آپلود عکس‌های آشپزخانه (حداکثر ۳ عکس)</span>
-            </div>
-
-            <div class="studio-upload-slots" id="studioSlotsGrid">
-              <label class="studio-slot" data-slot-index="0">
-                <input type="file" accept="image/jpeg,image/png,image/webp" class="studio-slot-input" data-slot="0" hidden />
-                <div class="slot-icon"><i class="fa-solid fa-camera"></i></div>
-                <strong class="slot-title">عکس ۱: روبه‌رو</strong>
-                <span class="slot-sub">انتخاب</span>
-                <button type="button" class="slot-remove" data-remove-slot="0" title="حذف عکس" style="display: none;">×</button>
-              </label>
-
-              <label class="studio-slot" data-slot-index="1">
-                <input type="file" accept="image/jpeg,image/png,image/webp" class="studio-slot-input" data-slot="1" hidden />
-                <div class="slot-icon"><i class="fa-solid fa-angles-left"></i></div>
-                <strong class="slot-title">عکس ۲: زاویه</strong>
-                <span class="slot-sub">انتخاب</span>
-                <button type="button" class="slot-remove" data-remove-slot="1" title="حذف عکس" style="display: none;">×</button>
-              </label>
-
-              <label class="studio-slot" data-slot-index="2">
-                <input type="file" accept="image/jpeg,image/png,image/webp" class="studio-slot-input" data-slot="2" hidden />
-                <div class="slot-icon"><i class="fa-solid fa-expand"></i></div>
-                <strong class="slot-title">عکس ۳: صفحه</strong>
-                <span class="slot-sub">انتخاب</span>
-                <button type="button" class="slot-remove" data-remove-slot="2" title="حذف عکس" style="display: none;">×</button>
-              </label>
-            </div>
-
-            <!-- Compact Stepped Kitchen Measurements (Source of Geometric Truth) -->
-            <div class="studio-step-title" style="margin-top: 14px;">
-              <span class="step-num">۲</span>
-              <span>ابعاد اصلی آشپزخانه (متر)</span>
-            </div>
-
-            <div class="studio-dims-grid" id="studioDimsGrid">
-              <div class="dim-field">
-                <label for="studioWallLen">طول دیوار اصلی</label>
-                <input type="number" id="studioWallLen" min="1.8" max="10" step="0.1" value="4.0" />
-              </div>
-              <div class="dim-field">
-                <label for="studioSideLen">عمق / دیوار کنار</label>
-                <input type="number" id="studioSideLen" min="1.8" max="10" step="0.1" value="3.2" />
-              </div>
-              <div class="dim-field">
-                <label for="studioCeilHeight">ارتفاع سقف</label>
-                <input type="number" id="studioCeilHeight" min="2.2" max="4.2" step="0.05" value="2.8" />
-              </div>
-              <div class="dim-field">
-                <label for="studioLayoutType">چیدمان</label>
-                <select id="studioLayoutType">
-                  <option value="l_shape">ال‌شکل (L)</option>
-                  <option value="linear">خطی (یک‌طرفه)</option>
-                  <option value="galley">موازی (دوطرفه)</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Missing-dimension clarification box (only appears if server requests exact dimensions) -->
-            <div id="missingDimsAlert" class="info-banner gold" style="display: none; margin-top: 10px;"></div>
-
-            <!-- Step 3: ONLY Palette Selection List -->
-            <div class="studio-step-title" style="margin-top: 16px;">
-              <span class="step-num">۳</span>
-              <span>انتخاب رنگ دلخواه از کالیته رنگ پلی‌اورتان</span>
-            </div>
-
-            <div class="studio-options-group">
-              <div class="palette-box" id="paletteSwatchesBox">
-                <div class="palette-swatches" id="paletteSwatchesList">
-                  <button type="button" class="palette-chip active" data-palette-hex="#d9cebf" data-palette-name="بژ کشمیری (NP N 1859P)">
-                    <span class="palette-dot" style="background: #d9cebf;"></span>
-                    <span>بژ کشمیری</span>
-                  </button>
-                  <button type="button" class="palette-chip" data-palette-hex="#efe8dc" data-palette-name="کرم استخوانی گرم (NP OW 1012)">
-                    <span class="palette-dot" style="background: #efe8dc;"></span>
-                    <span>کرم استخوانی</span>
-                  </button>
-                  <button type="button" class="palette-chip" data-palette-hex="#9b8d7e" data-palette-name="تاپه گرم (Warm Taupe)">
-                    <span class="palette-dot" style="background: #9b8d7e;"></span>
-                    <span>تاپه گرم</span>
-                  </button>
-                  <button type="button" class="palette-chip" data-palette-hex="#8e98a0" data-palette-name="طوسی نقره‌ای ملایم (Silver Mist)">
-                    <span class="palette-dot" style="background: #8e98a0;"></span>
-                    <span>طوسی نقره‌ای</span>
-                  </button>
-                  <button type="button" class="palette-chip" data-palette-hex="#697d72" data-palette-name="سبز اکالیپتوس (Eucalyptus)">
-                    <span class="palette-dot" style="background: #697d72;"></span>
-                    <span>سبز اکالیپتوس</span>
-                  </button>
-                  <button type="button" class="palette-chip" data-palette-hex="#2f3e4e" data-palette-name="سرمه‌ای نئوکلاسیک (Classic Navy)">
-                    <span class="palette-dot" style="background: #2f3e4e;"></span>
-                    <span>سرمه‌ای نئوکلاسیک</span>
-                  </button>
-                  <button type="button" class="palette-chip" data-palette-hex="#6e5544" data-palette-name="قهوه‌ای موکا مدرن (Mocha)">
-                    <span class="palette-dot" style="background: #6e5544;"></span>
-                    <span>موکا مدرن</span>
-                  </button>
-                  <label class="custom-color-label" title="انتخاب رنگ دلخواه از طیف کامل">
-                    <input type="color" id="customPaletteColorInput" class="custom-color-input" value="#b8a99a" />
-                    <span>+ انتخاب رنگ دلخواه</span>
-                  </label>
-                </div>
-
-                <!-- Optional Upper Cabinet Complementary Color Selector -->
-                <div class="upper-palette-section" id="upperPaletteSection">
-                  <div class="upper-palette-header">
-                    <span>تغییر رنگ کابینت‌های هوایی (اختیاری):</span>
-                  </div>
-                  <div class="palette-swatches" id="upperPaletteSwatchesList">
-                    <button type="button" class="palette-chip upper-chip active" data-upper-mode="match">
-                      <span class="palette-dot" id="upperMatchDot" style="background: #d9cebf;"></span>
-                      <span>هم‌رنگ زمینی (یکدست)</span>
-                    </button>
-                    <button type="button" class="palette-chip upper-chip" data-upper-hex="#f7f5f0" data-upper-name="سفید ابریشمی">
-                      <span class="palette-dot" style="background: #f7f5f0;"></span>
-                      <span>سفید ابریشمی</span>
-                    </button>
-                    <button type="button" class="palette-chip upper-chip" data-upper-hex="#f2eadc" data-upper-name="کرم استخوانی">
-                      <span class="palette-dot" style="background: #f2eadc;"></span>
-                      <span>کرم استخوانی</span>
-                    </button>
-                    <button type="button" class="palette-chip upper-chip" data-upper-hex="#e2d7c7" data-upper-name="بژ کشمیری">
-                      <span class="palette-dot" style="background: #e2d7c7;"></span>
-                      <span>بژ کشمیری</span>
-                    </button>
-                    <button type="button" class="palette-chip upper-chip" data-upper-hex="#d6cdc0" data-upper-name="گریژ روشن">
-                      <span class="palette-dot" style="background: #d6cdc0;"></span>
-                      <span>گریژ روشن</span>
-                    </button>
-                    <button type="button" class="palette-chip upper-chip" data-upper-hex="#cfd5d9" data-upper-name="طوسی ملایم">
-                      <span class="palette-dot" style="background: #cfd5d9;"></span>
-                      <span>طوسی ملایم</span>
-                    </button>
-                    <button type="button" class="palette-chip upper-chip" data-upper-hex="#cfa879" data-upper-name="بلوط روشن">
-                      <span class="palette-dot" style="background: #cfa879;"></span>
-                      <span>بلوط روشن</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Step 4: Addons + Optional Plain-Persian Custom Changes -->
-            <div class="studio-step-title" style="margin-top: 16px;">
-              <span class="step-num">۴</span>
-              <span>تغییرات دلخواه و ارتقای آشپزخانه</span>
-            </div>
-
-            <div class="studio-options-group">
-              <div class="studio-options-grid" id="studioAddonOptions">
-                <button type="button" class="studio-option-btn" data-option-id="add_island">
-                  <span class="studio-swatch" style="background: #936c30; display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.9rem;">
-                    <i class="fa-solid fa-table-columns"></i>
-                  </span>
-                  <div class="studio-option-info">
-                    <strong>ساخت جزیره</strong>
-                    <small>هم‌رنگ کابینت با صفحه سنگی</small>
-                    <span class="studio-cost-pill">+۲۰۰ میلیون</span>
-                  </div>
-                </button>
-
-                <button type="button" class="studio-option-btn" data-option-id="add_coffeebar">
-                  <span class="studio-swatch" style="background: #6f4e1b; display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.9rem;">
-                    <i class="fa-solid fa-mug-hot"></i>
-                  </span>
-                  <div class="studio-option-info">
-                    <strong>ساخت کافی‌بار</strong>
-                    <small>شلف چوبی و طراحی اختصاصی</small>
-                    <span class="studio-cost-pill">+۱۸۰ میلیون</span>
-                  </div>
-                </button>
-
-                <button type="button" class="studio-option-btn" data-option-id="refinish_countertop">
-                  <span class="studio-swatch" style="background: #ede6da; display:flex; align-items:center; justify-content:center; color:#26201b; font-size:0.9rem;">
-                    <i class="fa-solid fa-layer-group"></i>
-                  </span>
-                  <div class="studio-option-info">
-                    <strong>نوسازی صفحه</strong>
-                    <small>سنگ کوارتز یا طرح چوب روشن</small>
-                    <span class="studio-cost-pill">+۲۲ میلیون</span>
-                  </div>
-                </button>
-
-                <button type="button" class="studio-option-btn" data-option-id="change_backsplash">
-                  <span class="studio-swatch" style="background: #d9cbb8; display:flex; align-items:center; justify-content:center; color:#26201b; font-size:0.9rem;">
-                    <i class="fa-solid fa-border-all"></i>
-                  </span>
-                  <div class="studio-option-info">
-                    <strong>سرامیک بین‌کابینتی</strong>
-                    <small>نصب سرامیک مدرن بین‌کابینتی</small>
-                    <span class="studio-cost-pill">+۲۰ میلیون</span>
-                  </div>
-                </button>
-
-                <button type="button" class="studio-option-btn" data-option-id="add_lighting">
-                  <span class="studio-swatch" style="background: #d4a64a; display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.9rem;">
-                    <i class="fa-regular fa-lightbulb"></i>
-                  </span>
-                  <div class="studio-option-info">
-                    <strong>نور مخفی</strong>
-                    <small>نور مخفی زیر کابینت‌های هوایی</small>
-                    <span class="studio-cost-pill">+۱۳ میلیون</span>
-                  </div>
-                </button>
-              </div>
-
-              <div class="field" style="margin-top: 10px;">
-                <input
-                  type="text"
-                  id="studioChangeTextInput"
-                  placeholder="تغییر دلخواه به زبان ساده (مثلاً: دستگیره‌ها مشکی، صفحه طرح چوب روشن، کابینت بالا تا سقف)..."
-                />
-              </div>
-            </div>
-
-            <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-              <button type="button" class="btn btn-primary" id="analyzeKitchenBtn" style="flex: 1;">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                <span>تولید تصاویر واقعی چندزاویه + برآورد قیمت (<strong id="uploadedCountBadge">۰</strong>/۳)</span>
-              </button>
-            </div>
-
-            <!-- AI Status & Summary Output Box (Compact) -->
-            <div class="ai-analysis-box" id="aiAnalysisBox">
-              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <strong style="color: var(--accent-olive); font-size: 0.88rem;" id="aiStatusTitle">
-                  <i class="fa-solid fa-circle-check"></i> نتیجه بررسی هوشمند:
-                </strong>
-                <span class="tag olive" id="aiScoreBadge">تایید خودکار هندسه</span>
-              </div>
-              <div class="ai-analysis-grid" id="aiAnalysisGrid">
-                <div class="ai-stat">
-                  <small>وضعیت چیدمان</small>
-                  <strong id="aiLayoutText">مناسب بازسازی با رنگ پلی‌اورتان</strong>
-                </div>
-                <div class="ai-stat">
-                  <small>بازه برآورد هزینه</small>
-                  <strong id="aiColorText">محاسبه بر اساس متراژ و تعداد درب‌ها</strong>
-                </div>
-              </div>
-              <div class="ai-pipeline-steps" id="aiPipelineSteps" style="display: none;"></div>
-            </div>
-          </div>
-
-          <!-- Left Column: Multi-Angle Photorealistic Render Preview Card -->
+          <!-- Left/Main Preview Card: Interactive Real Iranian Kitchen Image -->
           <div class="studio-preview-card">
-            <div class="studio-preview-badge" id="studioPreviewBadge">
-              پیش‌نمایش: بژ کشمیری (NP N 1859P)
-            </div>
-
-            <div class="studio-mode-tabs" id="studioModeTabs">
-              <button type="button" class="studio-mode-tab active" data-studio-mode="render">
-                <i class="fa-solid fa-cubes"></i> رندر بازسازی
-              </button>
-              <button type="button" class="studio-mode-tab" data-studio-mode="sketch">
-                <i class="fa-solid fa-pen-ruler"></i> اسکیچ عکس شما
-              </button>
-              <button type="button" class="studio-mode-tab" data-studio-mode="before">
-                <i class="fa-solid fa-image"></i> عکس قبل
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div class="studio-preview-badge" id="catalogPreviewBadge">
+                آشپزخانه نمونه ایرانی — بژ کشمیری
+              </div>
+              <button type="button" class="catalog-before-btn" id="catalogResetBeforeBtn">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>بازگشت به تصویر اولیه</span>
               </button>
             </div>
 
-            <div class="studio-preview-frame" id="studioPreviewFrame">
+            <div class="studio-preview-frame" id="catalogPreviewFrame">
               <img
-                src="/assets/before-1.jpg"
-                alt="پیش‌نمایش زنده تغییرات کابینت"
-                id="studioPreviewImg"
-                style="display: none;"
+                src="/uploads/sample-kitchen/colors/cashmere_beige.jpg"
+                alt="آشپزخانه نمونه بازسازی ایرانی نوکابین"
+                id="catalogPreviewImg"
+                class="catalog-preview-img"
               />
-              <canvas
-                id="studioPreviewCanvas"
-                class="studio-preview-canvas"
-              ></canvas>
-            </div>
-
-            <!-- Rendered Multi-Angle Camera Switcher Strip (Front, Right, Left) -->
-            <div id="multiAngleStrip" class="multi-angle-strip" style="display: none;"></div>
-
-            <!-- User's Own Uploaded Thumbnails Strip (only if uploaded) -->
-            <div id="userUploadedStrip" style="display: none; background: rgba(255,255,255,0.06); padding: 8px 10px; border-radius: 10px;">
-              <div id="userUploadedThumbs" style="display: flex; gap: 6px; overflow-x: auto; align-items: center;"></div>
             </div>
 
             <div class="studio-preview-meta">
               <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div>
-                  <h3 id="studioPreviewTitle" style="margin-bottom: 2px;">بژ کشمیری (NP N 1859P)</h3>
-                  <span style="font-size: 0.8rem; color: #d4c7b6;" id="studioPreviewDesc">رنگ پلی‌اورتان (<span id="selectedOptionsCount">۱</span> مورد انتخابی)</span>
+                  <h3 id="catalogPreviewTitle" style="margin-bottom: 2px;">بژ کشمیری — رنگ پلی‌اورتان</h3>
+                  <span style="font-size: 0.8rem; color: #d4c7b6;" id="catalogPreviewDesc">
+                    آشپزخانه نمونه آپارتمانی ایرانی (پیش‌نمایش کاتالوگ نوکابین)
+                  </span>
                 </div>
-                <strong style="font-size: 1.04rem; color: #f3d49c;" id="studioTotalEstimate">حدود ۷۰ میلیون تومان</strong>
+                <strong style="font-size: 0.92rem; color: #f3d49c;" id="catalogFinishTag">پرداخت: ساتن نیمه‌براق</strong>
               </div>
             </div>
 
             <button type="button" class="btn btn-gold" style="width: 100%;" id="applyStudioToFormBtn">
               <i class="fa-solid fa-check-double"></i>
-              ثبت این ترکیب و بازدید رایگان
+              ثبت این انتخاب برای بازدید رایگان
             </button>
+          </div>
+
+          <!-- Right Column: Categorized Catalog Options -->
+          <div id="catalogOptionsPanel">
+            <!-- Category 1: Cabinet Color -->
+            <div class="studio-step-title">
+              <span class="step-num">۱</span>
+              <span>رنگ کابینت (رنگ پلی‌اورتان)</span>
+            </div>
+            <div class="palette-box" style="margin-top: 8px;">
+              <div class="palette-swatches" id="catalogColorsList">
+                <button type="button" class="palette-chip catalog-chip active" data-catalog-id="color_cashmere_beige" data-category="colors" data-img="/uploads/sample-kitchen/colors/cashmere_beige.jpg" data-title="بژ کشمیری" data-desc="رنگ پلی‌اورتان بژ کشمیری گرم و خنثی — پرطرفدارترین انتخاب آپارتمانی">
+                  <span class="palette-dot" style="background: #d9cebf;"></span>
+                  <span>بژ کشمیری</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="color_bone_cream" data-category="colors" data-img="/uploads/sample-kitchen/colors/bone_cream.jpg" data-title="کرم استخوانی" data-desc="رنگ پلی‌اورتان کرم استخوانی روشن برای انعکاس بیشتر نور طبیعی">
+                  <span class="palette-dot" style="background: #efe8dc;"></span>
+                  <span>کرم استخوانی</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="color_warm_taupe" data-category="colors" data-img="/uploads/sample-kitchen/colors/warm_taupe.jpg" data-title="تاپه گرم" data-desc="رنگ پلی‌اورتان تاپه گرم با هماهنگی کامل کنار کاشی و کف کرم">
+                  <span class="palette-dot" style="background: #9b8d7e;"></span>
+                  <span>تاپه گرم</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="color_silver_mist" data-category="colors" data-img="/uploads/sample-kitchen/colors/silver_mist.jpg" data-title="طوسی نقره‌ای" data-desc="رنگ پلی‌اورتان طوسی نقره‌ای مدرن هماهنگ با یخچال و هود استیل">
+                  <span class="palette-dot" style="background: #8e98a0;"></span>
+                  <span>طوسی نقره‌ای</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="color_eucalyptus_green" data-category="colors" data-img="/uploads/sample-kitchen/colors/eucalyptus_green.jpg" data-title="سبز اکالیپتوس" data-desc="رنگ پلی‌اورتان سبز اکالیپتوس مات با حس آرامش و طراحی مدرن">
+                  <span class="palette-dot" style="background: #697d72;"></span>
+                  <span>سبز اکالیپتوس</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="color_classic_navy" data-category="colors" data-img="/uploads/sample-kitchen/colors/classic_navy.jpg" data-title="سرمه‌ای نئوکلاسیک" data-desc="رنگ پلی‌اورتان سرمه‌ای تیره و شیک مناسب آشپزخانه‌های پرنور">
+                  <span class="palette-dot" style="background: #2f3e4e;"></span>
+                  <span>سرمه‌ای نئوکلاسیک</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="color_mocha_modern" data-category="colors" data-img="/uploads/sample-kitchen/colors/mocha_modern.jpg" data-title="قهوه‌ای موکا مدرن" data-desc="رنگ پلی‌اورتان قهوه‌ای موکا یکدست و گرم با پوشش کامل خط‌وخش‌های قدیمی">
+                  <span class="palette-dot" style="background: #6e5544;"></span>
+                  <span>موکا مدرن</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="color_twotone_navy_cream" data-category="colors" data-img="/uploads/sample-kitchen/colors/twotone_navy_cream.jpg" data-title="دورنگ (سرمه‌ای + کرم)" data-desc="کابینت زمینی سرمه‌ای + کابینت هوایی کرم استخوانی روشن">
+                  <span class="palette-dot" style="background: linear-gradient(135deg, #efe8dc 50%, #2f3e4e 50%);"></span>
+                  <span>دورنگ سرمه‌ای و کرم</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Category 2: Handle Color & Model -->
+            <div class="studio-step-title" style="margin-top: 16px;">
+              <span class="step-num">۲</span>
+              <span>رنگ و مدل دستگیره</span>
+            </div>
+            <div class="palette-box" style="margin-top: 8px;">
+              <div class="palette-swatches" id="catalogHandlesList">
+                <button type="button" class="palette-chip catalog-chip active" data-catalog-id="handle_silver_bar" data-category="handles" data-img="/uploads/sample-kitchen/colors/cashmere_beige.jpg" data-title="دستگیره میله‌ای نقره‌ای" data-desc="مدل میله‌ای خطی با رنگ نقره‌ای استیل (فابریک)">
+                  <span class="palette-dot" style="background: #c4c9ce;"></span>
+                  <span>میله‌ای نقره‌ای</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="handle_matte_black" data-category="handles" data-img="/uploads/sample-kitchen/handles/matte_black.jpg" data-title="دستگیره میله‌ای مشکی مات" data-desc="مدل میله‌ای مدرن با رنگ مشکی مات">
+                  <span class="palette-dot" style="background: #232426;"></span>
+                  <span>میله‌ای مشکی مات</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="handle_brushed_gold" data-category="handles" data-img="/uploads/sample-kitchen/handles/brushed_gold.jpg" data-title="دستگیره میله‌ای طلایی" data-desc="مدل میله‌ای لوکس با رنگ طلایی شامپاینی برس‌خورده">
+                  <span class="palette-dot" style="background: #c59b57;"></span>
+                  <span>میله‌ای طلایی</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="handle_hidden_jpull" data-category="handles" data-img="/uploads/sample-kitchen/handles/hidden_jpull.jpg" data-title="دستگیره مخفی (بدون دستگیره)" data-desc="حذف دستگیره‌های بیرون‌زده و اجرای مدل مخفی مینیمال">
+                  <span class="palette-dot" style="background: #d9cebf;"></span>
+                  <span>مخفی (بدون دستگیره)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Category 3: Countertop Type -->
+            <div class="studio-step-title" style="margin-top: 16px;">
+              <span class="step-num">۳</span>
+              <span>نوع صفحه کابینت</span>
+            </div>
+            <div class="palette-box" style="margin-top: 8px;">
+              <div class="palette-swatches" id="catalogCountertopsList">
+                <button type="button" class="palette-chip catalog-chip active" data-catalog-id="countertop_standard" data-category="countertops" data-img="/uploads/sample-kitchen/colors/cashmere_beige.jpg" data-title="صفحه گرم فابریک" data-desc="حفظ صفحه کابینت فعلی بدون تغییر">
+                  <span class="palette-dot" style="background: #b38d65;"></span>
+                  <span>صفحه گرم فابریک</span>
+                </button>
+                <button type="button" class="palette-chip catalog-chip" data-catalog-id="countertop_white_marble" data-category="countertops" data-img="/uploads/sample-kitchen/countertops/white_marble.jpg" data-title="صفحه سنگ مرمر روشن" data-desc="نوسازی صفحه کابینت به طرح سنگ مرمر سفید رگه‌دار">
+                  <span class="palette-dot" style="background: #f3efe9;"></span>
+                  <span>سنگ مرمر روشن</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Category 4: Paint Finish & Gloss -->
+            <div class="studio-step-title" style="margin-top: 16px;">
+              <span class="step-num">۴</span>
+              <span>نوع پرداخت و میزان براقیت رنگ</span>
+            </div>
+            <div class="palette-box" style="margin-top: 8px;">
+              <div class="palette-swatches" id="catalogFinishesList">
+                <button type="button" class="palette-chip finish-chip active" data-finish-id="satin" data-finish-label="ساتن نیمه‌براق ابریشمی">
+                  <i class="fa-solid fa-sparkles" style="color: var(--accent-gold);"></i>
+                  <span>ساتن نیمه‌براق ابریشمی</span>
+                </button>
+                <button type="button" class="palette-chip finish-chip" data-finish-id="matte" data-finish-label="سوپرمات مخملی (بدون بازتاب)">
+                  <i class="fa-solid fa-circle-half-stroke" style="color: var(--text-secondary);"></i>
+                  <span>سوپرمات مخملی</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

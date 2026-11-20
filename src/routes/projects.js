@@ -11,6 +11,8 @@ const { calculateKitchenPricing } = require('../engine/pricingEngine');
 const { parseNaturalLanguageToOperations, applyStructuredOperations } = require('../engine/changeEngine');
 const { reconstructKitchenFromPhotosAndDimensions } = require('../engine/sceneReconstructor');
 const { GLB_DIR, enqueueRenderJob, retryRenderJob } = require('../workers/renderQueue');
+const { enqueueGeminiProjectJob } = require('../workers/geminiQueue');
+const { getActiveImageModel } = require('../engine/geminiImageEditor');
 
 const router = express.Router();
 
@@ -569,6 +571,103 @@ router.post('/:id/retry', (req, res) => {
       stepLabel: job.step_label,
     },
   });
+});
+
+// GET /api/projects/gemini/config — Non-sensitive status of Gemini Image Editing engine
+router.get('/gemini/config', (req, res) => {
+  const configured = Boolean(process.env.GEMINI_API_KEY || config.GEMINI_API_KEY);
+  res.json({
+    ok: true,
+    configured,
+    activeModel: getActiveImageModel(),
+    supportedModels: config.GEMINI_SUPPORTED_IMAGE_MODELS,
+  });
+});
+
+// POST /api/projects/gemini-edit — Upload 1-3 real kitchen photos & edit each via Google Gemini (Nano Banana)
+router.post('/gemini-edit', upload.array('photos', 3), async (req, res) => {
+  const files = req.files || [];
+  try {
+    const apiKey = process.env.GEMINI_API_KEY || config.GEMINI_API_KEY;
+    if (!apiKey) {
+      cleanupFiles(files);
+      return res.status(503).json({
+        error: 'کلید GEMINI_API_KEY در تنظیمات سرور وارد نشده است. لطفاً کلید API را در Environment سرور تنظیم کنید.',
+        missingApiKey: true,
+      });
+    }
+
+    if (files.length === 0) {
+      return res.status(400).json({
+        error: 'لطفاً حداقل ۱ عکس واقعی از آشپزخانه خود بارگذاری کنید.',
+      });
+    }
+
+    const uploadedImageIds = files.map((f) => f.filename);
+    const uploadedImageHashes = files.map((f) => computeFileSha256(f.path));
+    const savedPhotos = files.map((f, idx) => ({
+      id: uploadedImageIds[idx],
+      hash: uploadedImageHashes[idx],
+      url: `/uploads/${f.filename}`,
+      absPath: f.path,
+      originalName: f.originalname,
+      sizeKB: Math.round(f.size / 1024),
+    }));
+
+    const options = {
+      cabinetColor: req.body?.cabinetColor || 'cream',
+      cabinetColorHex: req.body?.cabinetColorHex || '',
+      upperColor: req.body?.upperColor || '',
+      upperColorHex: req.body?.upperColorHex || '',
+      lowerColor: req.body?.lowerColor || '',
+      lowerColorHex: req.body?.lowerColorHex || '',
+      materialType: req.body?.materialType || 'Satin/Matte architectural polyurethane cabinet paint',
+      countertopMaterial: req.body?.countertopMaterial || 'unchanged',
+      handleStyle: req.body?.handleStyle || 'unchanged',
+      designStyle: req.body?.designStyle || 'modern',
+      changeBacksplash: req.body?.changeBacksplash === 'true' || req.body?.changeBacksplash === true,
+      addCoffeeBar: req.body?.addCoffeeBar === 'true' || req.body?.addCoffeeBar === true,
+      customRequests: req.body?.customRequests || '',
+    };
+
+    const modelOverride = req.body?.modelName || undefined;
+
+    const projInsert = db
+      .prepare(
+        `INSERT INTO kitchen_projects (
+           user_id, title, status, customer_photos_json, uploaded_image_ids_json, uploaded_image_hashes_json,
+           scene_parameters_json, processing_steps_json
+         ) VALUES (?, ?, 'gemini_queued', ?, ?, ?, ?, ?)`
+      )
+      .run(
+        req.user?.id || null,
+        String(req.body?.title || 'بازسازی تصویری با Gemini Nano Banana').trim(),
+        JSON.stringify(savedPhotos),
+        JSON.stringify(uploadedImageIds),
+        JSON.stringify(uploadedImageHashes),
+        JSON.stringify({ mode: 'gemini_image_editing', model: getActiveImageModel(modelOverride), options }),
+        JSON.stringify([
+          { key: 'receive_photos', label: 'دریافت تصاویر', status: 'completed', detail: `${files.length} تصویر دریافت شد` },
+          { key: 'analyze_kitchen', label: 'تحلیل تصویر با Gemini', status: 'in_progress', detail: 'در صف پردازش...' },
+          { key: 'gemini_edit', label: 'ویرایش فوتورئال Nano Banana', status: 'waiting', detail: '' },
+          { key: 'qa_check', label: 'کنترل کیفیت حفظ ساختار', status: 'waiting', detail: '' },
+        ])
+      );
+
+    const projectId = Number(projInsert.lastInsertRowid);
+    enqueueGeminiProjectJob({ projectId, photos: savedPhotos, options, modelOverride });
+
+    res.status(202).json({
+      ok: true,
+      projectId,
+      status: 'gemini_queued',
+      activeModel: getActiveImageModel(modelOverride),
+      photos: savedPhotos.map((p) => ({ id: p.id, url: p.url })),
+    });
+  } catch (err) {
+    cleanupFiles(files);
+    res.status(400).json({ error: err.message || 'خطا در شروع پردازش تصویر با Gemini.' });
+  }
 });
 
 // GET /api/projects/:id — Poll project state, job progress, multi-angle renders, and pricing

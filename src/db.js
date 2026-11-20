@@ -182,6 +182,29 @@ db.exec(`
   }
 })();
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS gemini_edit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    image_id TEXT NOT NULL,
+    model_name TEXT NOT NULL,
+    input_image_size INTEGER NOT NULL DEFAULT 0,
+    prompt TEXT NOT NULL,
+    request_id TEXT DEFAULT '',
+    generation_time INTEGER NOT NULL DEFAULT 0,
+    output_image_path TEXT DEFAULT '',
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    estimated_cost REAL NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued', 'analyzing', 'editing', 'qa_checking', 'completed', 'failed')),
+    analysis_json TEXT DEFAULT '{}',
+    qa_result_json TEXT DEFAULT '{}',
+    error_message TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (project_id) REFERENCES kitchen_projects(id) ON DELETE CASCADE
+  );
+`);
+
 function getSetting(key, fallback) {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
   return row ? row.value : fallback;

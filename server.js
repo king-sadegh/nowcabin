@@ -13,6 +13,7 @@ const galleryRoutes = require('./src/routes/gallery');
 const adminRoutes = require('./src/routes/admin');
 const aiStudioRoutes = require('./src/routes/ai-studio');
 const projectRoutes = require('./src/routes/projects');
+const { SAMPLE_KITCHEN_CATALOG } = require('./src/data/sampleKitchenCatalog');
 
 const app = express();
 
@@ -29,13 +30,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(attachUser);
 
-// Static files & uploaded photos
+// Static files & uploaded photos (sample-kitchen served from repo public/sample-kitchen)
+app.use('/uploads/sample-kitchen', express.static(path.join(config.ROOT_DIR, 'public', 'sample-kitchen')));
 app.use('/uploads', express.static(config.UPLOADS_DIR));
 app.use(express.static(path.join(config.ROOT_DIR, 'public')));
 
 // Health check for Docker / aaPanel monitoring
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'nokabin', timestamp: new Date().toISOString() });
+});
+
+// Interactive Sample Kitchen Catalog API
+app.get('/api/sample-kitchen/catalog', (_req, res) => {
+  res.json({
+    ok: true,
+    items: SAMPLE_KITCHEN_CATALOG.filter((item) => item.active),
+  });
 });
 
 // API Routes
