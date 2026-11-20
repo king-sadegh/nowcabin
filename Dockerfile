@@ -2,20 +2,18 @@ FROM node:24-slim
 
 WORKDIR /app
 
-# Install Python CV deps (numpy, pillow) + Chromium headless WebGL runtime
-# Force IPv4 + 15s socket timeout + automatic fallback to Iranian mirror if deb.debian.org stalls
+# Layer 1: Lightweight Python CV dependencies (cached separately)
 RUN set -e; \
-    APT_OPTS="-o Acquire::ForceIPv4=true -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 -o Acquire::Retries=2"; \
-    install_deps() { \
-      apt-get $APT_OPTS update && \
-      apt-get $APT_OPTS install -y --no-install-recommends python3 python3-numpy python3-pil chromium; \
-    }; \
-    if ! install_deps; then \
-      echo "Default Debian repo stalled/failed, switching to Iranian mirror (mirror.arvancloud.ir)..."; \
-      find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i 's|deb.debian.org|mirror.arvancloud.ir|g; s|security.debian.org|mirror.arvancloud.ir|g' {} +; \
-      apt-get $APT_OPTS update && \
-      apt-get $APT_OPTS install -y --no-install-recommends python3 python3-numpy python3-pil chromium; \
-    fi; \
+    APT_OPTS="-o Acquire::ForceIPv4=true -o Acquire::http::Timeout=20 -o Acquire::Retries=3"; \
+    apt-get $APT_OPTS update && \
+    apt-get $APT_OPTS install -y --no-install-recommends python3 python3-numpy python3-pil && \
+    rm -rf /var/lib/apt/lists/*
+
+# Layer 2: Chromium headless WebGL runtime (cached separately so code pushes stay <20s)
+RUN set -e; \
+    APT_OPTS="-o Acquire::ForceIPv4=true -o Acquire::http::Timeout=30 -o Acquire::Retries=5"; \
+    apt-get $APT_OPTS update && \
+    apt-get $APT_OPTS install -y --no-install-recommends chromium && \
     rm -rf /var/lib/apt/lists/*
 
 ENV CHROME_PATH=/usr/bin/chromium
