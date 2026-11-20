@@ -30,6 +30,27 @@ function findCachedRendersByHash(sceneHash) {
   }
 }
 
+function appendProjectStep(projectId, stepKey, label, status, detail = '') {
+  try {
+    const row = db.prepare('SELECT processing_steps_json FROM kitchen_projects WHERE id = ?').get(projectId);
+    const steps = JSON.parse(row?.processing_steps_json || '[]');
+    const idx = steps.findIndex((s) => s.key === stepKey);
+    const entry = {
+      key: stepKey,
+      label,
+      status,
+      detail,
+      at: new Date().toISOString(),
+    };
+    if (idx >= 0) steps[idx] = entry;
+    else steps.push(entry);
+    db.prepare(`UPDATE kitchen_projects SET processing_steps_json = ?, updated_at = datetime('now') WHERE id = ?`).run(
+      JSON.stringify(steps),
+      projectId
+    );
+  } catch {}
+}
+
 function enqueueRenderJob({ projectId, versionNum, sceneHash }) {
   // Check if a job for same project & version is already active
   const existingActive = db
@@ -42,7 +63,7 @@ function enqueueRenderJob({ projectId, versionNum, sceneHash }) {
     return existingActive;
   }
 
-  // Deduplication cache check by scene_hash
+  // Deduplication cache check by scene_hash (which includes sourceImageHashes & geometry)
   const cached = findCachedRendersByHash(sceneHash);
   if (cached) {
     const info = db
@@ -52,7 +73,11 @@ function enqueueRenderJob({ projectId, versionNum, sceneHash }) {
       )
       .run(projectId, versionNum, sceneHash, JSON.stringify(cached));
 
-    db.prepare(`UPDATE kitchen_projects SET status = 'ready', updated_at = datetime('now') WHERE id = ?`).run(projectId);
+    const outPaths = cached.map((r) => r.url);
+    db.prepare(
+      `UPDATE kitchen_projects SET status = 'ready', output_image_paths_json = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(JSON.stringify(outPaths), projectId);
+    appendProjectStep(projectId, 'final_renders', 'تولید تصاویر نهایی', 'completed', `${outPaths.length} تصویر رندر (کش هندسی)`);
     return db.prepare('SELECT * FROM render_jobs WHERE id = ?').get(info.lastInsertRowid);
   }
 
@@ -64,6 +89,7 @@ function enqueueRenderJob({ projectId, versionNum, sceneHash }) {
     .run(projectId, versionNum, sceneHash);
 
   db.prepare(`UPDATE kitchen_projects SET status = 'rendering', updated_at = datetime('now') WHERE id = ?`).run(projectId);
+  appendProjectStep(projectId, 'final_renders', 'تولید تصاویر نهایی', 'in_progress', 'در صف پردازش رندر سه‌بعدی');
 
   const job = db.prepare('SELECT * FROM render_jobs WHERE id = ?').get(info.lastInsertRowid);
   scheduleWorker();
@@ -93,10 +119,14 @@ async function processNextJob() {
     // Again check hash deduplication right before rendering
     const cached = findCachedRendersByHash(nextJob.scene_hash);
     if (cached) {
+      const outPaths = cached.map((r) => r.url);
       db.prepare(
         `UPDATE render_jobs SET status = 'completed', step_label = 'تصاویر رندر آماده شد!', renders_json = ?, updated_at = datetime('now') WHERE id = ?`
       ).run(JSON.stringify(cached), jobId);
-      db.prepare(`UPDATE kitchen_projects SET status = 'ready', updated_at = datetime('now') WHERE id = ?`).run(nextJob.project_id);
+      db.prepare(
+        `UPDATE kitchen_projects SET status = 'ready', output_image_paths_json = ?, updated_at = datetime('now') WHERE id = ?`
+      ).run(JSON.stringify(outPaths), nextJob.project_id);
+      appendProjectStep(nextJob.project_id, 'final_renders', 'تولید تصاویر نهایی', 'completed', `${outPaths.length} تصویر رندر`);
       return;
     }
 
@@ -129,11 +159,15 @@ async function processNextJob() {
       height: 720,
     });
 
+    const outPaths = renderRes.renders.map((r) => r.url);
     db.prepare(
       `UPDATE render_jobs SET status = 'completed', step_label = 'تصاویر رندر و برآورد قیمت آماده شد!', renders_json = ?, error_message = '', updated_at = datetime('now') WHERE id = ?`
     ).run(JSON.stringify(renderRes.renders), jobId);
 
-    db.prepare(`UPDATE kitchen_projects SET status = 'ready', updated_at = datetime('now') WHERE id = ?`).run(nextJob.project_id);
+    db.prepare(
+      `UPDATE kitchen_projects SET status = 'ready', output_image_paths_json = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(JSON.stringify(outPaths), nextJob.project_id);
+    appendProjectStep(nextJob.project_id, 'final_renders', 'تولید تصاویر نهایی', 'completed', `${outPaths.length} نمای اختصاصی`);
   } catch (err) {
     const jobSnapshot = db.prepare('SELECT * FROM render_jobs WHERE id = ?').get(jobId);
     const canRetry = jobSnapshot && jobSnapshot.attempts < jobSnapshot.max_attempts;
@@ -148,6 +182,7 @@ async function processNextJob() {
       db.prepare(
         `UPDATE kitchen_projects SET status = 'render_failed', error_log = ?, updated_at = datetime('now') WHERE id = ?`
       ).run(err.message || String(err), nextJob.project_id);
+      appendProjectStep(nextJob.project_id, 'final_renders', 'تولید تصاویر نهایی', 'failed', err.message || 'خطا در تولید رندر');
     }
   } finally {
     isProcessing = false;

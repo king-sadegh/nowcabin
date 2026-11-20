@@ -1324,12 +1324,46 @@ document.addEventListener('DOMContentLoaded', () => {
   const aiScoreBadge = document.getElementById('aiScoreBadge');
   const missingDimsAlert = document.getElementById('missingDimsAlert');
 
+  const aiPipelineSteps = document.getElementById('aiPipelineSteps');
+
+  function renderPipelineSteps(steps) {
+    if (!aiPipelineSteps) return;
+    const defaultSteps = [
+      { key: 'receive_photos', label: 'دریافت تصاویر', status: 'in_progress' },
+      { key: 'analyze_kitchen', label: 'تحلیل آشپزخانه', status: 'waiting' },
+      { key: 'extract_layout', label: 'استخراج چیدمان', status: 'waiting' },
+      { key: 'build_3d_model', label: 'ساخت مدل سه‌بعدی', status: 'waiting' },
+      { key: 'validate_model', label: 'بررسی صحت مدل', status: 'waiting' },
+      { key: 'final_renders', label: 'تولید تصاویر نهایی', status: 'waiting' },
+    ];
+    const list = Array.isArray(steps) && steps.length > 0 ? steps : defaultSteps;
+    aiPipelineSteps.style.display = 'grid';
+    aiPipelineSteps.innerHTML = list
+      .map((s) => {
+        const icon =
+          s.status === 'completed'
+            ? '<i class="fa-solid fa-circle-check"></i>'
+            : s.status === 'failed'
+              ? '<i class="fa-solid fa-circle-xmark"></i>'
+              : s.status === 'in_progress'
+                ? '<i class="fa-solid fa-spinner fa-spin"></i>'
+                : '<i class="fa-regular fa-clock"></i>';
+        const titleAttr = s.detail ? `title="${escapeHtml(s.detail)}"` : '';
+        return `<div class="pipeline-step ${escapeHtml(s.status || 'waiting')}" ${titleAttr}>${icon}<span>${escapeHtml(s.label)}</span></div>`;
+      })
+      .join('');
+  }
+
   async function pollProjectUntilReady(projectId, btnEl, origHtml) {
     for (let attempt = 0; attempt < 35; attempt++) {
       await new Promise((r) => setTimeout(r, 1200));
       const res = await apiFetch(`/api/projects/${projectId}`);
       const proj = res.project;
       if (!proj) continue;
+
+      if (proj.processingSteps) {
+        renderPipelineSteps(proj.processingSteps);
+      }
 
       if (aiStatusTitle && proj.job?.stepLabel) {
         aiStatusTitle.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${escapeHtml(proj.job.stepLabel)}`;
@@ -1350,7 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
           aiStatusTitle.innerHTML = '<i class="fa-solid fa-circle-check"></i> تصاویر واقعی بازسازی آماده شد!';
         }
         if (aiScoreBadge) {
-          aiScoreBadge.textContent = 'تایید خودکار هندسه';
+          aiScoreBadge.textContent = `مدل اختصاصی #${toPersianDigits(projectId)}`;
         }
         updateStudioPreviewUI();
         showToast('تصاویر واقعی بازسازی از ۳ زاویه و برآورد قیمت آماده شد!', 'success');
@@ -1362,8 +1396,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (proj.job?.status === 'failed') {
+        serverRenders = [];
+        renderMultiAngleStrip();
         if (aiStatusTitle) {
-          aiStatusTitle.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> خطا در آماده‌سازی تصویر';
+          aiStatusTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> خطا در آماده‌سازی تصویر: ${escapeHtml(proj.job.errorMessage || 'لطفاً دوباره تلاش کنید')}`;
         }
         showToast(proj.job.errorMessage || 'خطا در تولید رندر. لطفاً دوباره تلاش کنید.', 'error');
         if (btnEl) {
@@ -1382,6 +1418,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (analyzeKitchenBtn) {
     analyzeKitchenBtn.addEventListener('click', async () => {
       const files = getUploadedStudioFiles();
+      if (files.length === 0) {
+        showToast('لطفاً ابتدا حداقل ۱ عکس واقعی از آشپزخانه خود بارگذاری کنید تا مدل اختصاصی شما ساخته شود.', 'error');
+        const firstSlot = document.querySelector('.studio-slot[data-slot-index="0"]');
+        if (firstSlot) firstSlot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
       const wallLen = document.getElementById('studioWallLen')?.value || '';
       const sideLen = document.getElementById('studioSideLen')?.value || '';
       const ceilHeight = document.getElementById('studioCeilHeight')?.value || '';
@@ -1393,9 +1436,14 @@ document.addEventListener('DOMContentLoaded', () => {
         missingDimsAlert.innerHTML = '';
       }
 
+      if (aiAnalysisBox) {
+        aiAnalysisBox.classList.add('visible');
+      }
+      renderPipelineSteps();
+
       analyzeKitchenBtn.disabled = true;
       const origHtml = analyzeKitchenBtn.innerHTML;
-      analyzeKitchenBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> در حال تحلیل تصاویر و ابعاد...';
+      analyzeKitchenBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> در حال تحلیل تصاویر و ساخت مدل اختصاصی...';
 
       try {
         const photoSig = `${files.map((f) => `${f.name}:${f.size}`).join('|')}|${wallLen}|${sideLen}|${ceilHeight}|${layoutType}`;
@@ -1443,6 +1491,10 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         }
 
+        if (data.processingSteps) {
+          renderPipelineSteps(data.processingSteps);
+        }
+
         if (data.needsClarification) {
           if (missingDimsAlert) {
             missingDimsAlert.style.display = 'block';
@@ -1462,8 +1514,8 @@ document.addEventListener('DOMContentLoaded', () => {
         activeProjectId = data.projectId;
         activeProjectSignature = photoSig;
 
-        if (aiAnalysisBox) {
-          aiAnalysisBox.classList.add('visible');
+        if (aiScoreBadge) {
+          aiScoreBadge.textContent = `مدل اختصاصی #${toPersianDigits(data.projectId)}`;
         }
         if (aiLayoutText) {
           const m = data.pricing?.metrics;
@@ -1501,6 +1553,11 @@ document.addEventListener('DOMContentLoaded', () => {
           await pollProjectUntilReady(data.projectId, analyzeKitchenBtn, origHtml);
         }
       } catch (err) {
+        serverRenders = [];
+        renderMultiAngleStrip();
+        if (aiStatusTitle) {
+          aiStatusTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(err.message || 'خطا در پردازش تصاویر')}`;
+        }
         showToast(err.message, 'error');
         analyzeKitchenBtn.disabled = false;
         analyzeKitchenBtn.innerHTML = origHtml;

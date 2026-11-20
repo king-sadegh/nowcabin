@@ -262,6 +262,23 @@ async function run() {
     threeScene.add(pLight);
   });
 
+  // Render Window Openings (if detected or specified)
+  const glassMat = new THREE.MeshPhysicalMaterial({
+    color: '#dcebf7',
+    emissive: '#9cc3e4',
+    emissiveIntensity: 0.35,
+    roughness: 0.08,
+    metalness: 0.1,
+  });
+  for (const op of KS.openings || []) {
+    if (op.type === 'window' && op.position && op.size) {
+      const [ox, oy, oz] = op.position;
+      const { width: ow, height: oh, depth: od } = op.size;
+      addMeshBox(ox, oy, oz, ow + 0.08, oh + 0.08, od, op.rotationY || 0, darkMetalMat, false, true);
+      addMeshBox(ox, oy + 0.04, oz + 0.01, ow, oh, od * 0.6, op.rotationY || 0, glassMat, false, false);
+    }
+  }
+
   // Cabinets + Recessed 5-Piece Shaker Doors + Handles + Toe Kick
   for (const cab of KS.cabinets || []) {
     const [cx, minY, cz] = cab.position;

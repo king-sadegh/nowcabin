@@ -34,14 +34,14 @@ function runComputerVisionAnalysis(imagePaths) {
  * Checks mandatory customer-supplied architectural dimensions before trusting geometry.
  * Strictly obeys Rule 11.10: Never assumes metric dimensions from a raw photo alone.
  */
-function checkRequiredDimensions(dimsInput = {}) {
+function checkRequiredDimensions(dimsInput = {}, cvResult = null) {
   const missingDimensions = [];
   const clarificationQuestions = [];
 
   const wallLength = Number(dimsInput.wallLengthMeters ?? dimsInput.width);
   const sideWallLength = Number(dimsInput.sideWallMeters ?? dimsInput.depth);
   const ceilingHeight = Number(dimsInput.ceilingHeightMeters ?? dimsInput.ceilingHeight);
-  const layoutType = String(dimsInput.layoutType || 'l_shape');
+  const rawLayout = String(dimsInput.layoutType || cvResult?.reconciled?.layoutHint || 'l_shape');
 
   if (!wallLength || wallLength < 1.8 || wallLength > 10) {
     missingDimensions.push({ field: 'wallLengthMeters', label: 'طول دیوار اصلی آشپزخانه (۱.۸ تا ۱۰ متر)' });
@@ -68,15 +68,33 @@ function checkRequiredDimensions(dimsInput = {}) {
       baseDepth: Number((Number(dimsInput.baseDepthMeters) || 0.60).toFixed(2)),
       upperHeight: Number((Number(dimsInput.upperHeightMeters) || 0.78).toFixed(2)),
       upperDepth: Number((Number(dimsInput.upperDepthMeters) || 0.35).toFixed(2)),
-      layoutType: ['linear', 'l_shape', 'galley'].includes(layoutType) ? layoutType : 'l_shape',
-      fridgeSide: dimsInput.fridgePosition === 'right' ? 'right' : 'left',
-      sinkRatio: Number(dimsInput.sinkPositionRatio) || 0.48,
-      stoveRatio: Number(dimsInput.stovePositionRatio) || 0.70,
-      hasWindow: Boolean(dimsInput.hasWindow),
-      windowWall: dimsInput.windowWall || 'wall_left',
+      layoutType: ['linear', 'l_shape', 'galley'].includes(rawLayout) ? rawLayout : 'l_shape',
+      fridgePosition: dimsInput.fridgePosition || cvResult?.reconciled?.fridgeSideHint || 'left',
+      sinkPosition: dimsInput.sinkPosition || 'auto',
+      stovePosition: dimsInput.stovePosition || 'auto',
+      hasWindow: Boolean(dimsInput.hasWindow || cvResult?.reconciled?.windowDetected),
+      windowXNorm: Number(cvResult?.reconciled?.windowXNorm ?? 0.5),
       condition: dimsInput.condition || 'MDF / چوب سالم',
     },
   };
+}
+
+function resolveModuleIndexFromHint(hint, cvNorm, moduleCount, occupiedSet = new Set()) {
+  let targetNorm = Number.isFinite(cvNorm) ? cvNorm : 0.5;
+  if (hint === 'left') targetNorm = 0.15;
+  else if (hint === 'center') targetNorm = 0.50;
+  else if (hint === 'right') targetNorm = 0.85;
+  else if (hint === 'first_wall') targetNorm = 0.45;
+
+  let bestIdx = Math.max(0, Math.min(moduleCount - 1, Math.round(targetNorm * (moduleCount - 1))));
+  if (!occupiedSet.has(bestIdx)) return bestIdx;
+
+  // Find nearest unoccupied module index
+  for (let offset = 1; offset < moduleCount; offset++) {
+    if (bestIdx + offset < moduleCount && !occupiedSet.has(bestIdx + offset)) return bestIdx + offset;
+    if (bestIdx - offset >= 0 && !occupiedSet.has(bestIdx - offset)) return bestIdx - offset;
+  }
+  return bestIdx;
 }
 
 /**
@@ -89,7 +107,7 @@ async function reconstructKitchenFromPhotosAndDimensions({ imagePaths = [], dime
     cvResult = await runComputerVisionAnalysis(imagePaths);
   }
 
-  const dimCheck = checkRequiredDimensions(dimensionsInput);
+  const dimCheck = checkRequiredDimensions(dimensionsInput, cvResult);
   if (!dimCheck.sufficient) {
     return {
       approved: false,
@@ -114,14 +132,14 @@ async function reconstructKitchenFromPhotosAndDimensions({ imagePaths = [], dime
     layoutType: d.layoutType,
   });
 
-  // Preserve CV-detected cabinet colors as "before" starting state if provided
-  const detectedUpper = cvResult?.reconciled?.upperColorHex || '#7d5233';
-  const detectedLower = cvResult?.reconciled?.lowerColorHex || '#6e4529';
+  // Preserve CV-detected cabinet colors as "before" starting state
+  const detectedUpper = cvResult?.reconciled?.upperColorHex || '#d9cebf';
+  const detectedLower = cvResult?.reconciled?.lowerColorHex || '#d9cebf';
   const cvConfidence = cvResult?.reconciled?.averageConfidence ?? 0.90;
 
   scene.materials = {
     cabinetFinishId: 'cashmere_beige',
-    upperColor: '#d9cebf', // Default unified NoKabin polyurethane look; original recorded in metadata
+    upperColor: '#d9cebf',
     lowerColor: '#d9cebf',
     cabinetSurfaceType: 'polyurethane_satin',
     countertopId: 'standard_beige_stone',
@@ -132,49 +150,100 @@ async function reconstructKitchenFromPhotosAndDimensions({ imagePaths = [], dime
   scene.metadata = {
     source: imagePaths.length > 0 ? 'cv_plus_customer_dimensions' : 'customer_dimensions',
     photosCount: imagePaths.length,
+    sourceImageHashes: cvResult?.imageHashes || [],
     averageConfidence: cvConfidence,
     cvDetectedCabinetCount: cvResult?.reconciled?.estimatedCabinetBays || 0,
+    cvDetectedLayout: cvResult?.reconciled?.layoutHint || d.layoutType,
     detectedOriginalUpperHex: detectedUpper,
     detectedOriginalLowerHex: detectedLower,
     lightingTone: cvResult?.reconciled?.lightingTone || 'طبیعی',
     condition: d.condition,
   };
 
+  const hasFridge = d.fridgePosition !== 'none';
+  const fridgeSide = d.fridgePosition === 'right' ? 'right' : 'left';
   const fridgeW = 0.84;
   const fridgeH = Math.min(1.98, H - 0.12);
   const fridgeD = 0.68;
-  const fridgeSide = dimensionsInput.fridgePosition
-    ? d.fridgeSide
-    : cvResult?.reconciled?.fridgeSideHint || 'left';
 
-  // Reserve fridge zone on left or right end of back wall, plus optional coffee bar gap if space >= 3.9m
   const fridgeX = fridgeSide === 'left' ? fridgeW / 2 + 0.04 : W - fridgeW / 2 - 0.04;
-  const runStart = fridgeSide === 'left' ? fridgeW + 0.08 : 0.04;
-  const runEnd = fridgeSide === 'left' ? W - 0.04 : W - fridgeW - 0.08;
+  const runStart = hasFridge && fridgeSide === 'left' ? fridgeW + 0.08 : 0.04;
+  const runEnd = hasFridge && fridgeSide === 'right' ? W - fridgeW - 0.08 : W - 0.04;
   const runLen = Math.max(1.2, runEnd - runStart);
 
-  // Split back wall base cabinet run cleanly into 3 or 4 parametric modules
-  const moduleCount = runLen >= 3.0 ? 4 : 3;
+  // Module count driven by CV bay estimation bounded to realistic cabinet widths (0.45m .. 0.90m)
+  const minBays = Math.max(2, Math.floor(runLen / 0.90));
+  const maxBays = Math.max(minBays, Math.floor(runLen / 0.45));
+  const cvBays = cvResult?.reconciled?.estimatedCabinetBays || Math.round(runLen / 0.72);
+  const moduleCount = Math.max(minBays, Math.min(maxBays, cvBays));
   const modW = Number((runLen / moduleCount).toFixed(3));
+
   const baseH = d.baseHeight;
   const baseD = d.baseDepth;
   const upperY = Number(Math.min(H - d.upperHeight - 0.12, baseH + 0.58).toFixed(2));
   const upperH = d.upperHeight;
   const upperD = d.upperDepth;
 
-  const sinkIdx = 0;
-  const stoveIdx = Math.min(moduleCount - 1, 1);
+  const hasSideRow = d.layoutType === 'l_shape' || d.layoutType === 'galley';
+  const sinkOnSideWall = d.sinkPosition === 'side_wall' && hasSideRow;
 
-  scene.appliances.push({
-    id: 'app_fridge',
-    type: 'fridge',
-    label: 'یخچال',
-    position: [Number(fridgeX.toFixed(3)), 0, fridgeD / 2],
-    size: { width: fridgeW, height: fridgeH, depth: fridgeD },
-    rotationY: 0,
-    color: '#cfd4d8',
-    confidence: 0.92,
-  });
+  const occupiedBackSlots = new Set();
+  const stoveIdx = resolveModuleIndexFromHint(
+    d.stovePosition,
+    cvResult?.reconciled?.stoveXNorm,
+    moduleCount,
+    occupiedBackSlots
+  );
+  occupiedBackSlots.add(stoveIdx);
+
+  const sinkIdx = sinkOnSideWall
+    ? -1
+    : resolveModuleIndexFromHint(
+        d.sinkPosition,
+        cvResult?.reconciled?.sinkXNorm,
+        moduleCount,
+        occupiedBackSlots
+      );
+  if (sinkIdx >= 0) occupiedBackSlots.add(sinkIdx);
+
+  // Window placement on back wall (if detected or requested) avoiding stove hood
+  let windowModIdx = -1;
+  if (d.hasWindow && moduleCount >= 3) {
+    const candidateWinIdx = resolveModuleIndexFromHint('auto', d.windowXNorm, moduleCount, new Set([stoveIdx]));
+    if (candidateWinIdx !== stoveIdx) {
+      windowModIdx = candidateWinIdx;
+      const winW = Math.min(0.95, modW * 0.90);
+      const winH = Math.min(0.72, upperH);
+      const winCx = Number((runStart + (windowModIdx + 0.5) * modW).toFixed(3));
+      const winOffset = Number((winCx - winW / 2).toFixed(3));
+      const winSill = Number((upperY + 0.04).toFixed(3));
+      scene.openings.push({
+        id: 'win_back_1',
+        type: 'window',
+        wallId: 'wall_back',
+        offset: winOffset,
+        width: winW,
+        height: winH,
+        sillHeight: winSill,
+        position: [winCx, winSill, 0.01],
+        size: { width: winW, height: winH, depth: 0.12 },
+        rotationY: 0,
+      });
+    }
+  }
+
+  if (hasFridge) {
+    scene.appliances.push({
+      id: 'app_fridge',
+      type: 'fridge',
+      label: 'یخچال',
+      position: [Number(fridgeX.toFixed(3)), 0, fridgeD / 2],
+      size: { width: fridgeW, height: fridgeH, depth: fridgeD },
+      rotationY: 0,
+      color: '#cfd4d8',
+      confidence: 0.92,
+    });
+  }
 
   for (let i = 0; i < moduleCount; i++) {
     const cx = Number((runStart + (i + 0.5) * modW).toFixed(3));
@@ -193,7 +262,13 @@ async function reconstructKitchenFromPhotosAndDimensions({ imagePaths = [], dime
       color: scene.materials.lowerColor,
       doorStyle: 'shaker',
       handleId: scene.materials.handleId,
-      doors: buildCabinetDoors(cabId, modW, baseH - 0.10, isStoveUnit ? 'drawer' : modW >= 0.65 ? 'double' : 'single', isStoveUnit ? 3 : 0),
+      doors: buildCabinetDoors(
+        cabId,
+        modW,
+        baseH - 0.10,
+        isStoveUnit ? 'drawer' : modW >= 0.65 ? 'double' : 'single',
+        isStoveUnit ? 3 : 0
+      ),
       confidence: cvConfidence,
     });
 
@@ -231,7 +306,7 @@ async function reconstructKitchenFromPhotosAndDimensions({ imagePaths = [], dime
         color: '#2b2d30',
         confidence: 0.88,
       });
-    } else {
+    } else if (i !== windowModIdx) {
       const uId = `cab_back_upper_${i + 1}`;
       scene.cabinets.push({
         id: uId,
@@ -268,54 +343,75 @@ async function reconstructKitchenFromPhotosAndDimensions({ imagePaths = [], dime
     materialId: scene.materials.backsplashId,
   });
 
-  // Add second row for L-shape or Galley layouts cleanly without colliding with back row
-  if (d.layoutType === 'l_shape' || d.layoutType === 'galley') {
+  // Add second row for L-shape or Galley layouts scaled to actual sideWallMeters
+  if (hasSideRow) {
     const isRightRow = fridgeSide === 'left' || d.layoutType === 'galley';
     const wallX = isRightRow ? W - baseD / 2 : baseD / 2;
     const rotY = isRightRow ? -Math.PI / 2 : Math.PI / 2;
     const rowName = isRightRow ? 'row_right' : 'row_left';
     const sideStartZ = baseD + 0.06;
-    const sideAvail = Math.min(1.80, D - sideStartZ - 0.30);
+    const sideAvail = Math.max(0, Number((D - sideStartZ - 0.16).toFixed(3)));
 
-    if (sideAvail >= 0.75) {
-      const sideMods = sideAvail >= 1.40 ? 2 : 1;
+    if (sideAvail >= 0.70) {
+      const sideMods = Math.max(1, Math.min(5, Math.round(sideAvail / 0.75)));
       const sideModW = Number((sideAvail / sideMods).toFixed(3));
+      const sideSinkIdx = sinkOnSideWall ? Math.floor(sideMods / 2) : -1;
+
       for (let s = 0; s < sideMods; s++) {
         const cz = Number((sideStartZ + (s + 0.5) * sideModW).toFixed(3));
         const sbId = `cab_side_base_${s + 1}`;
+        const isSideSink = s === sideSinkIdx;
+
         scene.cabinets.push({
           id: sbId,
           kind: 'base',
           row: rowName,
-          label: `کابینت زمینی کناری ${s + 1}`,
+          label: isSideSink ? 'یونیت زیر سینک (ضلع دوم)' : `کابینت زمینی کناری ${s + 1}`,
           position: [Number(wallX.toFixed(3)), 0, cz],
           size: { width: sideModW, height: baseH, depth: baseD },
           rotationY: rotY,
           color: scene.materials.lowerColor,
           doorStyle: 'shaker',
           handleId: scene.materials.handleId,
-          doors: buildCabinetDoors(sbId, sideModW, baseH - 0.10, s === 0 ? 'drawer' : 'double', s === 0 ? 3 : 0),
+          doors: buildCabinetDoors(
+            sbId,
+            sideModW,
+            baseH - 0.10,
+            s === 0 && !isSideSink ? 'drawer' : sideModW >= 0.65 ? 'double' : 'single',
+            s === 0 && !isSideSink ? 3 : 0
+          ),
           confidence: cvConfidence,
         });
 
-        if (s === 0) {
-          const suId = `cab_side_upper_1`;
-          const uWallX = isRightRow ? W - upperD / 2 : upperD / 2;
-          scene.cabinets.push({
-            id: suId,
-            kind: 'upper',
-            row: rowName,
-            label: 'کابینت دیواری کناری',
-            position: [Number(uWallX.toFixed(3)), upperY, cz],
-            size: { width: sideModW, height: upperH, depth: upperD },
+        if (isSideSink) {
+          scene.appliances.push({
+            id: 'app_sink',
+            type: 'sink',
+            label: 'سینک ظرفشویی (ضلع دوم)',
+            position: [Number(wallX.toFixed(3)), baseH - 0.01, cz],
+            size: { width: Math.min(0.76, sideModW - 0.06), height: 0.18, depth: 0.46 },
             rotationY: rotY,
-            color: scene.materials.upperColor,
-            doorStyle: 'shaker',
-            handleId: scene.materials.handleId,
-            doors: buildCabinetDoors(suId, sideModW, upperH, sideModW >= 0.65 ? 'double' : 'single', 0),
-            confidence: cvConfidence,
+            color: '#b8bec4',
+            confidence: 0.90,
           });
         }
+
+        const suId = `cab_side_upper_${s + 1}`;
+        const uWallX = isRightRow ? W - upperD / 2 : upperD / 2;
+        scene.cabinets.push({
+          id: suId,
+          kind: 'upper',
+          row: rowName,
+          label: `کابینت دیواری کناری ${s + 1}`,
+          position: [Number(uWallX.toFixed(3)), upperY, cz],
+          size: { width: sideModW, height: upperH, depth: upperD },
+          rotationY: rotY,
+          color: scene.materials.upperColor,
+          doorStyle: 'shaker',
+          handleId: scene.materials.handleId,
+          doors: buildCabinetDoors(suId, sideModW, upperH, sideModW >= 0.65 ? 'double' : 'single', 0),
+          confidence: cvConfidence,
+        });
       }
 
       const ctCenterZ = Number((sideStartZ + sideAvail / 2).toFixed(3));

@@ -8,6 +8,7 @@ function cloneScene(scene) {
 
 function hashScene(scene) {
   const canonical = {
+    sourceImageHashes: scene.metadata?.sourceImageHashes || [],
     dimensions: scene.dimensions,
     walls: scene.walls,
     openings: scene.openings,

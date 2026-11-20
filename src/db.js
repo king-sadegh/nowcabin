@@ -160,6 +160,28 @@ db.exec(`
   );
 `);
 
+// Safe incremental migrations for kitchen_projects full pipeline traceability
+(function migrateKitchenProjectsTraceability() {
+  const cols = db.prepare('PRAGMA table_info(kitchen_projects)').all().map((c) => c.name);
+  const additions = [
+    ['uploaded_image_ids_json', "TEXT NOT NULL DEFAULT '[]'"],
+    ['uploaded_image_hashes_json', "TEXT NOT NULL DEFAULT '[]'"],
+    ['detected_kitchen_layout', "TEXT DEFAULT ''"],
+    ['detected_cabinets_json', "TEXT NOT NULL DEFAULT '[]'"],
+    ['detected_appliances_json', "TEXT NOT NULL DEFAULT '[]'"],
+    ['detected_dimensions_json', "TEXT NOT NULL DEFAULT '{}'"],
+    ['scene_parameters_json', "TEXT NOT NULL DEFAULT '{}'"],
+    ['generated_model_id', "TEXT DEFAULT ''"],
+    ['output_image_paths_json', "TEXT NOT NULL DEFAULT '[]'"],
+    ['processing_steps_json', "TEXT NOT NULL DEFAULT '[]'"],
+  ];
+  for (const [col, def] of additions) {
+    if (!cols.includes(col)) {
+      db.exec(`ALTER TABLE kitchen_projects ADD COLUMN ${col} ${def};`);
+    }
+  }
+})();
+
 function getSetting(key, fallback) {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
   return row ? row.value : fallback;

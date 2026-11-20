@@ -8,10 +8,19 @@ and candidate appliance/opening detections with explicit confidence scores.
 Note: Monocular photographs alone cannot guarantee exact metric dimensions;
 extracted visual structure must be fused with customer-supplied wall & height dimensions.
 """
+import hashlib
 import json
 import sys
 import numpy as np
 from PIL import Image
+
+
+def compute_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def rgb_to_hex(rgb):
@@ -32,6 +41,7 @@ def dominant_median_rgb(patch):
 
 
 def analyze_single_image(img_path, index):
+    image_hash = compute_sha256(img_path)
     with Image.open(img_path) as im:
         im_rgb = im.convert("RGB")
         orig_w, orig_h = im_rgb.size
@@ -87,7 +97,6 @@ def analyze_single_image(img_path, index):
         x0, x1 = s * sw, (s + 1) * sw
         tall_patch_lum = lum[int(h * 0.16):int(h * 0.82), x0:x1]
         tall_patch_sat = sat[int(h * 0.16):int(h * 0.82), x0:x1]
-        # Fridge/stainless tall unit tends to be uniform low-saturation vertical column
         uniformity = 1.0 / (1.0 + float(np.std(tall_patch_lum)) / 25.0)
         low_sat = 1.0 if float(np.mean(tall_patch_sat)) < 28.0 else 0.35
         score = uniformity * low_sat
@@ -103,14 +112,39 @@ def analyze_single_image(img_path, index):
     stove_slice = int(np.argmin(slice_darkness))
     stove_pos_norm = round((stove_slice + 0.5) / slices, 2)
 
-    # Bright overexposed patch in backsplash/upper wall -> potential window opening
+    # Sink / faucet zone: high specular/metallic contrast right above counter band, avoiding stove slice
+    faucet_band_lum = lum[max(0, counter_row - 26):max(1, counter_row - 2), :]
+    faucet_band_sat = sat[max(0, counter_row - 26):max(1, counter_row - 2), :]
+    sink_scores = []
+    for s in range(slices):
+        if s == stove_slice:
+            sink_scores.append(-1.0)
+            continue
+        sl_lum = faucet_band_lum[:, s * sw:(s + 1) * sw]
+        sl_sat = faucet_band_sat[:, s * sw:(s + 1) * sw]
+        edge_v = float(np.mean(np.abs(np.diff(sl_lum, axis=1)))) if sl_lum.shape[1] > 2 else 0.0
+        chrome_low_sat = 1.0 / (1.0 + float(np.mean(sl_sat)) / 20.0)
+        sink_scores.append(edge_v * chrome_low_sat)
+    sink_slice = int(np.argmax(sink_scores))
+    sink_pos_norm = round((sink_slice + 0.5) / slices, 2)
+
+    # Layout hint: strong vertical perspective asymmetry between left/right outer edges indicates L/Galley depth
+    left_edge_energy = float(np.mean(gy[:, :int(w * 0.18)]))
+    right_edge_energy = float(np.mean(gy[:, int(w * 0.82):]))
+    center_edge_energy = float(np.mean(gy[:, int(w * 0.30):int(w * 0.70)])) + 1e-3
+    side_ratio = max(left_edge_energy, right_edge_energy) / center_edge_energy
+    layout_hint = "l_shape" if side_ratio > 1.08 else "linear"
+
+    # Bright overexposed patch in backsplash/upper wall -> localized window opening (not an all-white wall)
     window_detected = False
     window_x_norm = 0.5
     upper_bright = lum[int(h * 0.18):int(counter_row), :]
-    bright_cols = np.mean(upper_bright > 228, axis=0)
-    if float(np.max(bright_cols)) > 0.45:
-        window_detected = True
-        window_x_norm = round(float(np.argmax(bright_cols)) / w, 2)
+    if upper_bright.size > 0:
+        bright_cols = np.mean(upper_bright > 235, axis=0)
+        overall_bright_frac = float(np.mean(upper_bright > 235))
+        if float(np.max(bright_cols)) > 0.50 and overall_bright_frac < 0.60:
+            window_detected = True
+            window_x_norm = round(float(np.argmax(bright_cols)) / w, 2)
 
     components.append({
         "id": f"photo{index+1}_wall_back",
@@ -144,6 +178,12 @@ def analyze_single_image(img_path, index):
         "confidence": 0.72 if max_tall_score > 0.35 else 0.52,
     })
     components.append({
+        "id": f"photo{index+1}_sink_cue",
+        "type": "sink",
+        "xNorm": sink_pos_norm,
+        "confidence": 0.70,
+    })
+    components.append({
         "id": f"photo{index+1}_stove_cue",
         "type": "stove",
         "xNorm": stove_pos_norm,
@@ -159,6 +199,7 @@ def analyze_single_image(img_path, index):
 
     return {
         "index": index,
+        "imageHash": image_hash,
         "resolution": {"width": orig_w, "height": orig_h},
         "lighting": {
             "meanBrightness": round(mean_lum, 1),
@@ -171,7 +212,9 @@ def analyze_single_image(img_path, index):
         },
         "counterYRatio": counter_y_ratio,
         "estimatedBays": estimated_bays,
+        "layoutHint": layout_hint,
         "fridgeSideHint": fridge_side,
+        "sinkXNorm": sink_pos_norm,
         "stoveXNorm": stove_pos_norm,
         "windowDetected": window_detected,
         "windowXNorm": window_x_norm,
@@ -200,26 +243,35 @@ def main():
 
     avg_bays = int(round(np.mean([p["estimatedBays"] for p in valid_photos])))
     avg_conf = float(np.mean([p["overallConfidence"] for p in valid_photos]))
-    # Cross-angle consistency boost when multiple angles supplied
     multi_angle_bonus = 0.06 if len(valid_photos) >= 2 else 0.0
     reconciled_conf = round(min(0.95, avg_conf + multi_angle_bonus), 2)
 
     fridge_votes = [p["fridgeSideHint"] for p in valid_photos]
     fridge_side = max(set(fridge_votes), key=fridge_votes.count)
+    layout_votes = [p["layoutHint"] for p in valid_photos]
+    layout_hint = max(set(layout_votes), key=layout_votes.count)
     window_detected = any(p["windowDetected"] for p in valid_photos)
+    window_x = next((p["windowXNorm"] for p in valid_photos if p["windowDetected"]), 0.5)
+
+    avg_sink_x = round(float(np.mean([p["sinkXNorm"] for p in valid_photos])), 2)
+    avg_stove_x = round(float(np.mean([p["stoveXNorm"] for p in valid_photos])), 2)
 
     result = {
         "ok": True,
         "photosAnalyzed": len(valid_photos),
+        "imageHashes": [p["imageHash"] for p in valid_photos],
         "perPhoto": per_photo,
         "reconciled": {
             "upperColorHex": valid_photos[0]["dominantColors"]["upperHex"],
             "lowerColorHex": valid_photos[0]["dominantColors"]["lowerHex"],
             "lightingTone": valid_photos[0]["lighting"]["toneLabel"],
             "estimatedCabinetBays": avg_bays,
+            "layoutHint": layout_hint,
             "fridgeSideHint": fridge_side,
-            "stoveXNorm": valid_photos[0]["stoveXNorm"],
+            "sinkXNorm": avg_sink_x,
+            "stoveXNorm": avg_stove_x,
             "windowDetected": window_detected,
+            "windowXNorm": window_x,
             "averageConfidence": reconciled_conf,
             "requiresCustomerDimensions": True,
         },

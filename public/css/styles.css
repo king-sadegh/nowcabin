@@ -1060,6 +1060,43 @@ textarea {
   margin-bottom: 8px;
 }
 
+.ai-pipeline-steps {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-medium);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+}
+
+.pipeline-step.completed {
+  color: var(--accent-olive);
+  border-color: rgba(74, 98, 63, 0.25);
+}
+
+.pipeline-step.in_progress {
+  color: var(--accent-gold-dark);
+  border-color: rgba(181, 137, 70, 0.4);
+}
+
+.pipeline-step.failed {
+  color: #b42318;
+  border-color: rgba(180, 35, 24, 0.35);
+}
+
 .palette-chip {
   display: inline-flex;
   align-items: center;
