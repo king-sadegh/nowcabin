@@ -129,7 +129,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeUserSlotIdx = -1; // -1 means no user photo selected yet; 0..2 means user's uploaded photo
   let activeColorOptionId = 'color_greige';
-  let customPaletteSelection = null; // { name, upperHex, lowerHex } when chosen from کالیته رنگ
+  let customPaletteSelection = {
+    name: 'بژ کشمیری (NP N 1859P)',
+    upperHex: '#e6dfd3',
+    lowerHex: '#c4b7a6',
+  };
   const activeAddonIds = new Set();
   let focusedOptionId = 'color_greige';
   let studioViewMode = 'render'; // 'render' | 'sketch' | 'before'
@@ -977,7 +981,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         slotEl.classList.remove('has-file');
         if (removeBtn) removeBtn.style.display = 'none';
-        if (subEl) subEl.textContent = 'کلیک برای انتخاب عکس';
+        if (subEl) subEl.textContent = 'انتخاب عکس';
         if (thumbImg) thumbImg.remove();
       }
     });
@@ -1075,13 +1079,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function updateStudioPreviewUI() {
-    const focused = STUDIO_OPTIONS_MAP[focusedOptionId] || STUDIO_OPTIONS_MAP[activeColorOptionId];
-    if (!focused) return;
-
-    // Highlight active buttons
-    document.querySelectorAll('#studioColorOptions .studio-option-btn').forEach((btn) => {
-      btn.classList.toggle('active', !customPaletteSelection && btn.dataset.optionId === activeColorOptionId);
-    });
     document.querySelectorAll('#studioAddonOptions .studio-option-btn').forEach((btn) => {
       btn.classList.toggle('active', activeAddonIds.has(btn.dataset.optionId));
     });
@@ -1090,78 +1087,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const isUsingUserPhoto = activeUserSlotIdx >= 0 && Boolean(studioSlotImages[activeUserSlotIdx]);
-    if (calibrationHint) {
-      calibrationHint.classList.toggle('visible', isUsingUserPhoto);
-    }
 
-    // Always render via the clean Architectural Sketch & 3D Render Canvas when:
-    // - user uploaded a photo, OR
-    // - custom palette swatch is selected, OR
-    // - multiple addons are combined, OR
-    // - user is in 'sketch' or 'render' mode
-    const useCanvasEngine =
-      isUsingUserPhoto ||
-      Boolean(customPaletteSelection) ||
-      activeAddonIds.size > 0 ||
-      studioViewMode === 'sketch' ||
-      studioViewMode === 'render';
-
-    if (useCanvasEngine && studioPreviewCanvas) {
+    if (studioPreviewCanvas) {
       if (studioPreviewImg) studioPreviewImg.style.display = 'none';
       studioPreviewCanvas.style.display = 'block';
       renderStudioCanvas();
-    } else if (studioPreviewImg) {
-      if (studioPreviewCanvas) studioPreviewCanvas.style.display = 'none';
-      studioPreviewImg.style.display = 'block';
-      studioPreviewImg.src = studioViewMode === 'before' ? focused.beforeImage : focused.previewImage;
     }
 
     const paintInfo = getActivePaintColors();
     if (studioPreviewBadge) {
       if (studioViewMode === 'before') {
         studioPreviewBadge.textContent = isUsingUserPhoto
-          ? 'نمای عکس اصلی آپلودشده شما (قبل از بازسازی)'
-          : 'نمای عکس اصلی قبل از بازسازی';
+          ? 'عکس اصلی شما (قبل)'
+          : 'عکس قبل از بازسازی';
       } else if (studioViewMode === 'sketch') {
-        studioPreviewBadge.textContent = `اسکیچ خطی معماری: ${paintInfo.label}`;
+        studioPreviewBadge.textContent = `اسکیچ خطی: ${paintInfo.label}`;
       } else {
-        studioPreviewBadge.textContent = `رندر و اسکیچ سه‌بعدی: ${paintInfo.label}`;
+        studioPreviewBadge.textContent = `رندر سه‌بعدی: ${paintInfo.label}`;
       }
     }
+
+    const totalSelectedCount = 1 + activeAddonIds.size;
+    const addonTitles = Array.from(activeAddonIds)
+      .map((id) => STUDIO_OPTIONS_MAP[id]?.title)
+      .filter(Boolean);
 
     if (studioPreviewTitle) {
-      studioPreviewTitle.textContent = customPaletteSelection
-        ? `رنگ انتخابی از کالیته: ${customPaletteSelection.name}`
-        : focused.title;
+      studioPreviewTitle.textContent = paintInfo.label;
     }
     if (studioPreviewDesc) {
-      studioPreviewDesc.textContent = customPaletteSelection
-        ? `اجرای رنگ پلی‌اورتان «${customPaletteSelection.name}» از کالیته تخصصی نوکابین روی رندر و اسکیچ معماری آشپزخانه.`
-        : focused.desc;
+      studioPreviewDesc.textContent =
+        addonTitles.length > 0
+          ? `رنگ پلی‌اورتان + ${addonTitles.join(' + ')}`
+          : `رنگ پلی‌اورتان (${toPersianDigits(totalSelectedCount)} مورد انتخابی)`;
     }
 
-    if (studioCompareToggleBtn) {
-      if (studioViewMode === 'render') {
-        studioCompareToggleBtn.innerHTML =
-          '<i class="fa-solid fa-pen-ruler"></i> مشاهده اسکیچ خطی مستقیم از عکس شما';
-      } else if (studioViewMode === 'sketch') {
-        studioCompareToggleBtn.innerHTML = '<i class="fa-solid fa-image"></i> مشاهده عکس اصلی (قبل از بازسازی)';
-      } else {
-        studioCompareToggleBtn.innerHTML =
-          '<i class="fa-solid fa-cubes"></i> بازگشت به رندر و اسکیچ سه‌بعدی بازسازی';
-      }
-    }
-
-    // Calculate total estimate based on base 70M + selected color + selected addons
+    // Calculate total estimate based on base 70M + selected addons
     let totalMillions = 70;
-    const colorOpt = STUDIO_OPTIONS_MAP[activeColorOptionId];
-    if (colorOpt && !customPaletteSelection) totalMillions += colorOpt.extraMillions;
     activeAddonIds.forEach((id) => {
       const addon = STUDIO_OPTIONS_MAP[id];
       if (addon) totalMillions += addon.extraMillions;
     });
 
-    const totalSelectedCount = 1 + activeAddonIds.size;
     if (selectedOptionsCountEl) {
       selectedOptionsCountEl.textContent = toPersianDigits(totalSelectedCount);
     }
@@ -1169,19 +1136,6 @@ document.addEventListener('DOMContentLoaded', () => {
       studioTotalEstimateEl.textContent = `حدود ${toPersianDigits(totalMillions)} میلیون تومان`;
     }
   }
-
-  // Click handlers for 4 Main Cabinet Color Presets
-  document.querySelectorAll('#studioColorOptions .studio-option-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const optId = btn.dataset.optionId;
-      activeColorOptionId = optId;
-      focusedOptionId = optId;
-      customPaletteSelection = null;
-      if (studioViewMode === 'before') studioViewMode = 'render';
-      document.querySelectorAll('#paletteSwatchesList .palette-chip').forEach((c) => c.classList.remove('active'));
-      updateStudioPreviewUI();
-    });
-  });
 
   // Click handlers for Color Swatch Palette (کالیته رنگ دلخواه)
   document.querySelectorAll('#paletteSwatchesList .palette-chip').forEach((chip) => {
