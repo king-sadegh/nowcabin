@@ -1199,64 +1199,194 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial render on page load
   updateStudioPreviewUI();
 
-  // AI Analyze Button
+  // AI Multi-Angle Project Builder & Renderer
   const analyzeKitchenBtn = document.getElementById('analyzeKitchenBtn');
   const aiAnalysisBox = document.getElementById('aiAnalysisBox');
+  const aiStatusTitle = document.getElementById('aiStatusTitle');
   const aiLayoutText = document.getElementById('aiLayoutText');
   const aiColorText = document.getElementById('aiColorText');
   const aiScoreBadge = document.getElementById('aiScoreBadge');
+  const missingDimsAlert = document.getElementById('missingDimsAlert');
+
+  async function pollProjectUntilReady(projectId, btnEl, origHtml) {
+    for (let attempt = 0; attempt < 35; attempt++) {
+      await new Promise((r) => setTimeout(r, 1200));
+      const res = await apiFetch(`/api/projects/${projectId}`);
+      const proj = res.project;
+      if (!proj) continue;
+
+      if (aiStatusTitle && proj.job?.stepLabel) {
+        aiStatusTitle.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${escapeHtml(proj.job.stepLabel)}`;
+      }
+
+      if (proj.pricing) {
+        serverPricing = proj.pricing;
+        if (aiColorText && proj.pricing.range) {
+          aiColorText.textContent = `${toPersianDigits(proj.pricing.range.minMillions)} تا ${toPersianDigits(proj.pricing.range.maxMillions)} میلیون تومان (${toPersianDigits(proj.pricing.metrics?.doorsCount || 0)} درب و ${toPersianDigits(proj.pricing.metrics?.drawersCount || 0)} کشو)`;
+        }
+      }
+
+      if (proj.job?.status === 'completed' && Array.isArray(proj.job.renders) && proj.job.renders.length > 0) {
+        serverRenders = proj.job.renders;
+        selectedRenderIdx = 0;
+        studioViewMode = 'render';
+        if (aiStatusTitle) {
+          aiStatusTitle.innerHTML = '<i class="fa-solid fa-circle-check"></i> تصاویر واقعی بازسازی آماده شد!';
+        }
+        if (aiScoreBadge) {
+          aiScoreBadge.textContent = 'تایید خودکار هندسه';
+        }
+        updateStudioPreviewUI();
+        showToast('تصاویر واقعی بازسازی از ۳ زاویه و برآورد قیمت آماده شد!', 'success');
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = origHtml;
+        }
+        return;
+      }
+
+      if (proj.job?.status === 'failed') {
+        if (aiStatusTitle) {
+          aiStatusTitle.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> خطا در آماده‌سازی تصویر';
+        }
+        showToast(proj.job.errorMessage || 'خطا در تولید رندر. لطفاً دوباره تلاش کنید.', 'error');
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = origHtml;
+        }
+        return;
+      }
+    }
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = origHtml;
+    }
+  }
 
   if (analyzeKitchenBtn) {
     analyzeKitchenBtn.addEventListener('click', async () => {
       const files = getUploadedStudioFiles();
-      if (files.length === 0) {
-        if (aiAnalysisBox) {
-          aiAnalysisBox.classList.add('visible');
-        }
-        studioViewMode = 'render';
-        updateStudioPreviewUI();
-        showToast('اسکیچ و رندر نمونه آماده است! می‌توانید ۱ تا ۳ عکس از آشپزخانه خود نیز آپلود کنید.', 'info');
-        return;
+      const wallLen = document.getElementById('studioWallLen')?.value || '';
+      const sideLen = document.getElementById('studioSideLen')?.value || '';
+      const ceilHeight = document.getElementById('studioCeilHeight')?.value || '';
+      const layoutType = document.getElementById('studioLayoutType')?.value || 'l_shape';
+      const changeText = document.getElementById('studioChangeTextInput')?.value.trim() || '';
+
+      if (missingDimsAlert) {
+        missingDimsAlert.style.display = 'none';
+        missingDimsAlert.innerHTML = '';
       }
 
       analyzeKitchenBtn.disabled = true;
       const origHtml = analyzeKitchenBtn.innerHTML;
-      analyzeKitchenBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> در حال ساخت اسکیچ و رندر هوشمند...';
+      analyzeKitchenBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> در حال تحلیل تصاویر و ابعاد...';
 
       try {
-        const fd = new FormData();
-        files.forEach((f) => fd.append('photos', f));
+        const photoSig = `${files.map((f) => `${f.name}:${f.size}`).join('|')}|${wallLen}|${sideLen}|${ceilHeight}|${layoutType}`;
+        const paintInfo = getActivePaintColors();
+        let data;
 
-        const data = await apiFetch('/api/ai-studio/analyze', {
-          method: 'POST',
-          body: fd,
-        });
+        if (activeProjectId && activeProjectSignature === photoSig) {
+          // Existing verified geometry -> apply changes cleanly without re-uploading photos
+          data = await apiFetch(`/api/projects/${activeProjectId}/changes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paletteName: paintInfo.label,
+              paletteUpperHex: customPaletteSelection?.upperHex,
+              paletteLowerHex: customPaletteSelection?.lowerHex,
+              addIsland: activeAddonIds.has('add_island'),
+              addCoffeeBar: activeAddonIds.has('add_coffeebar'),
+              countertopId: activeAddonIds.has('refinish_countertop') ? 'quartz_white_veined' : undefined,
+              backsplashId: activeAddonIds.has('change_backsplash') ? 'calacatta_slab' : undefined,
+              changeText,
+            }),
+          });
+        } else {
+          // New project creation with photos + customer dimensions + changes
+          const fd = new FormData();
+          files.forEach((f) => fd.append('photos', f));
+          fd.append('wallLengthMeters', wallLen);
+          fd.append('sideWallMeters', sideLen);
+          fd.append('ceilingHeightMeters', ceilHeight);
+          fd.append('layoutType', layoutType);
+          fd.append('paletteName', paintInfo.label);
+          if (customPaletteSelection?.upperHex) fd.append('paletteUpperHex', customPaletteSelection.upperHex);
+          if (customPaletteSelection?.lowerHex) fd.append('paletteLowerHex', customPaletteSelection.lowerHex);
+          if (activeAddonIds.has('add_island')) fd.append('addIsland', 'true');
+          if (activeAddonIds.has('add_coffeebar')) fd.append('addCoffeeBar', 'true');
+          if (activeAddonIds.has('refinish_countertop')) fd.append('countertopId', 'quartz_white_veined');
+          if (activeAddonIds.has('change_backsplash')) fd.append('backsplashId', 'calacatta_slab');
+          if (changeText) fd.append('changeText', changeText);
+
+          data = await apiFetch('/api/projects', {
+            method: 'POST',
+            body: fd,
+          });
+        }
+
+        if (data.needsClarification) {
+          if (missingDimsAlert) {
+            missingDimsAlert.style.display = 'block';
+            missingDimsAlert.innerHTML = `
+              <strong>لطفاً اندازه‌های زیر را وارد کنید:</strong>
+              <ul style="margin: 6px 16px 0 0;">
+                ${(data.clarificationQuestions || []).map((q) => `<li>${escapeHtml(q)}</li>`).join('')}
+              </ul>
+            `;
+          }
+          showToast(data.message || 'لطفاً ابعاد اصلی را کامل وارد کنید.', 'error');
+          analyzeKitchenBtn.disabled = false;
+          analyzeKitchenBtn.innerHTML = origHtml;
+          return;
+        }
+
+        activeProjectId = data.projectId;
+        activeProjectSignature = photoSig;
 
         if (aiAnalysisBox) {
           aiAnalysisBox.classList.add('visible');
         }
-        if (aiLayoutText && data.analysis) {
-          aiLayoutText.textContent = `${data.analysis.detectedLayout} (${toPersianDigits(data.analysis.photosCount)} تصویر بررسی شد)`;
+        if (aiLayoutText) {
+          const m = data.pricing?.metrics;
+          aiLayoutText.textContent = m
+            ? `${toPersianDigits(m.effectiveLinearMeters)} متر کابینت (${toPersianDigits(m.doorsCount)} درب و ${toPersianDigits(m.drawersCount)} کشو)`
+            : 'تایید خودکار هندسه';
         }
-        if (aiColorText && data.analysis) {
-          aiColorText.textContent = data.analysis.recommendedPrimaryColor;
+        if (data.pricing) {
+          serverPricing = data.pricing;
+          if (aiColorText && data.pricing.range) {
+            aiColorText.textContent = `${toPersianDigits(data.pricing.range.minMillions)} تا ${toPersianDigits(data.pricing.range.maxMillions)} میلیون تومان`;
+          }
+          updateStudioPreviewUI();
         }
-        if (aiScoreBadge && data.analysis) {
-          aiScoreBadge.textContent = `امتیاز صرفه اقتصادی بازسازی: ${toPersianDigits(data.analysis.feasibilityScore)}٪`;
+        if (Array.isArray(data.alternatives) && data.alternatives.length > 0) {
+          showToast(data.alternatives[0], 'info');
         }
 
-        if (activeUserSlotIdx < 0) {
-          activeUserSlotIdx = studioSlotImages.findIndex(Boolean);
+        if (data.job?.status === 'completed' && Array.isArray(data.job.renders) && data.job.renders.length > 0) {
+          serverRenders = data.job.renders;
+          selectedRenderIdx = 0;
+          studioViewMode = 'render';
+          if (aiStatusTitle) {
+            aiStatusTitle.innerHTML = '<i class="fa-solid fa-circle-check"></i> تصاویر واقعی بازسازی آماده شد!';
+          }
+          updateStudioPreviewUI();
+          analyzeKitchenBtn.disabled = false;
+          analyzeKitchenBtn.innerHTML = origHtml;
+          showToast('تصاویر واقعی چندزاویه و برآورد قیمت آماده شد!', 'success');
+        } else {
+          if (aiStatusTitle) {
+            aiStatusTitle.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${escapeHtml(data.job?.stepLabel || 'در حال آماده‌سازی رندرهای چندزاویه...')}`;
+          }
+          analyzeKitchenBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> در حال رندر نماهای چندزاویه...';
+          await pollProjectUntilReady(data.projectId, analyzeKitchenBtn, origHtml);
         }
-        studioViewMode = 'render';
-        updateStudioPreviewUI();
-
-        showToast('اسکیچ و رندر معماری آشپزخانه شما ساخته شد! اکنون رنگ‌ها و گزینه‌ها را روی رندر امتحان کنید.', 'success');
       } catch (err) {
         showToast(err.message, 'error');
-      } finally {
         analyzeKitchenBtn.disabled = false;
         analyzeKitchenBtn.innerHTML = origHtml;
+      } finally {
         updateStudioSlotsUI();
       }
     });

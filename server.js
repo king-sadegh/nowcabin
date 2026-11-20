@@ -12,6 +12,7 @@ const agentRoutes = require('./src/routes/agents');
 const galleryRoutes = require('./src/routes/gallery');
 const adminRoutes = require('./src/routes/admin');
 const aiStudioRoutes = require('./src/routes/ai-studio');
+const projectRoutes = require('./src/routes/projects');
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai-studio', aiStudioRoutes);
+app.use('/api/projects', projectRoutes);
 
 // Friendly HTML route aliases
 app.get(['/changes', '/gallery.html', '/gallery'], (_req, res) => {

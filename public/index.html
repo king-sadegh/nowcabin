@@ -194,36 +194,41 @@
               </label>
             </div>
 
-            <div style="margin-bottom: 18px;">
-              <button type="button" class="btn btn-primary" id="analyzeKitchenBtn">
-                <i class="fa-solid fa-microchip"></i>
-                <span>ساخت اسکیچ و رندر هوشمند (<strong id="uploadedCountBadge">۰</strong>/۳ عکس)</span>
-              </button>
-            </div>
-
-            <!-- AI Analysis Output Box (Compact) -->
-            <div class="ai-analysis-box" id="aiAnalysisBox">
-              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <strong style="color: var(--accent-olive); font-size: 0.9rem;">
-                  <i class="fa-solid fa-circle-check"></i> نتیجه بررسی هوش مصنوعی:
-                </strong>
-                <span class="tag olive" id="aiScoreBadge">صرفه بازسازی: ۹۴٪</span>
-              </div>
-              <div class="ai-analysis-grid" id="aiAnalysisGrid">
-                <div class="ai-stat">
-                  <small>وضعیت اسکلت</small>
-                  <strong id="aiLayoutText">سالم — مناسب رنگ پلی‌اورتان</strong>
-                </div>
-                <div class="ai-stat">
-                  <small>پیشنهاد رنگ</small>
-                  <strong id="aiColorText">انتخاب از کالیته رنگ پلی‌اورتان</strong>
-                </div>
-              </div>
-            </div>
-
-            <!-- Step 2: ONLY Palette Selection List -->
-            <div class="studio-step-title" style="margin-top: 16px;">
+            <!-- Compact Stepped Kitchen Measurements (Source of Geometric Truth) -->
+            <div class="studio-step-title" style="margin-top: 14px;">
               <span class="step-num">۲</span>
+              <span>ابعاد اصلی آشپزخانه (متر)</span>
+            </div>
+
+            <div class="studio-dims-grid" id="studioDimsGrid">
+              <div class="dim-field">
+                <label for="studioWallLen">طول دیوار اصلی</label>
+                <input type="number" id="studioWallLen" min="1.8" max="10" step="0.1" value="4.0" />
+              </div>
+              <div class="dim-field">
+                <label for="studioSideLen">عمق / دیوار کنار</label>
+                <input type="number" id="studioSideLen" min="1.8" max="10" step="0.1" value="3.2" />
+              </div>
+              <div class="dim-field">
+                <label for="studioCeilHeight">ارتفاع سقف</label>
+                <input type="number" id="studioCeilHeight" min="2.2" max="4.2" step="0.05" value="2.8" />
+              </div>
+              <div class="dim-field">
+                <label for="studioLayoutType">چیدمان</label>
+                <select id="studioLayoutType">
+                  <option value="l_shape">ال‌شکل (L)</option>
+                  <option value="linear">خطی (یک‌طرفه)</option>
+                  <option value="galley">موازی (دوطرفه)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Missing-dimension clarification box (only appears if server requests exact dimensions) -->
+            <div id="missingDimsAlert" class="info-banner gold" style="display: none; margin-top: 10px;"></div>
+
+            <!-- Step 3: ONLY Palette Selection List -->
+            <div class="studio-step-title" style="margin-top: 16px;">
+              <span class="step-num">۳</span>
               <span>انتخاب رنگ دلخواه از کالیته رنگ پلی‌اورتان</span>
             </div>
 
@@ -266,10 +271,10 @@
               </div>
             </div>
 
-            <!-- Step 3: Addons (Compact) -->
-            <div class="studio-step-title" style="margin-top: 18px;">
-              <span class="step-num">۳</span>
-              <span>گزینه‌های ارتقای آشپزخانه</span>
+            <!-- Step 4: Addons + Optional Plain-Persian Custom Changes -->
+            <div class="studio-step-title" style="margin-top: 16px;">
+              <span class="step-num">۴</span>
+              <span>تغییرات دلخواه و ارتقای آشپزخانه</span>
             </div>
 
             <div class="studio-options-group">
@@ -281,7 +286,7 @@
                   <div class="studio-option-info">
                     <strong>ساخت جزیره</strong>
                     <small>هم‌رنگ کابینت با صفحه سنگی</small>
-                    <span class="studio-cost-pill">+۲۴ میلیون</span>
+                    <span class="studio-cost-pill">+۲۲ تا ۲۸ میلیون</span>
                   </div>
                 </button>
 
@@ -301,9 +306,9 @@
                     <i class="fa-solid fa-layer-group"></i>
                   </span>
                   <div class="studio-option-info">
-                    <strong>رنگ / نوسازی صفحه</strong>
-                    <small>طرح سنگ کوارتز سفید</small>
-                    <span class="studio-cost-pill">+۱۴ میلیون</span>
+                    <strong>نوسازی صفحه</strong>
+                    <small>سنگ کوارتز یا طرح چوب روشن</small>
+                    <span class="studio-cost-pill">+۱۰ تا ۱۴ میلیون</span>
                   </div>
                 </button>
 
@@ -314,22 +319,57 @@
                   <div class="studio-option-info">
                     <strong>تغییر بین‌کابینتی</strong>
                     <small>اسلب ماربل + لاین نوری</small>
-                    <span class="studio-cost-pill">+۱۶ میلیون</span>
+                    <span class="studio-cost-pill">+۱۰ تا ۱۶ میلیون</span>
                   </div>
                 </button>
+              </div>
+
+              <div class="field" style="margin-top: 10px;">
+                <input
+                  type="text"
+                  id="studioChangeTextInput"
+                  placeholder="تغییر دلخواه به زبان ساده (مثلاً: دستگیره‌ها مشکی، صفحه طرح چوب روشن، کابینت بالا تا سقف)..."
+                />
+              </div>
+            </div>
+
+            <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+              <button type="button" class="btn btn-primary" id="analyzeKitchenBtn" style="flex: 1;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>تولید تصاویر واقعی چندزاویه + برآورد قیمت (<strong id="uploadedCountBadge">۰</strong>/۳)</span>
+              </button>
+            </div>
+
+            <!-- AI Status & Summary Output Box (Compact) -->
+            <div class="ai-analysis-box" id="aiAnalysisBox">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <strong style="color: var(--accent-olive); font-size: 0.88rem;" id="aiStatusTitle">
+                  <i class="fa-solid fa-circle-check"></i> نتیجه بررسی هوشمند:
+                </strong>
+                <span class="tag olive" id="aiScoreBadge">تایید خودکار هندسه</span>
+              </div>
+              <div class="ai-analysis-grid" id="aiAnalysisGrid">
+                <div class="ai-stat">
+                  <small>وضعیت چیدمان</small>
+                  <strong id="aiLayoutText">مناسب بازسازی با رنگ پلی‌اورتان</strong>
+                </div>
+                <div class="ai-stat">
+                  <small>بازه برآورد هزینه</small>
+                  <strong id="aiColorText">محاسبه بر اساس متراژ و تعداد درب‌ها</strong>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Left Column: Clean AI Architectural Sketch & 3D Render Preview Card -->
+          <!-- Left Column: Multi-Angle Photorealistic Render Preview Card -->
           <div class="studio-preview-card">
             <div class="studio-preview-badge" id="studioPreviewBadge">
-              رندر و اسکیچ سه‌بعدی: بژ کشمیری (NP N 1859P)
+              پیش‌نمایش: بژ کشمیری (NP N 1859P)
             </div>
 
             <div class="studio-mode-tabs" id="studioModeTabs">
               <button type="button" class="studio-mode-tab active" data-studio-mode="render">
-                <i class="fa-solid fa-cubes"></i> رندر سه‌بعدی
+                <i class="fa-solid fa-cubes"></i> رندر بازسازی
               </button>
               <button type="button" class="studio-mode-tab" data-studio-mode="sketch">
                 <i class="fa-solid fa-pen-ruler"></i> اسکیچ عکس شما
@@ -352,6 +392,9 @@
               ></canvas>
             </div>
 
+            <!-- Rendered Multi-Angle Camera Switcher Strip (Front, Right, Left) -->
+            <div id="multiAngleStrip" class="multi-angle-strip" style="display: none;"></div>
+
             <!-- User's Own Uploaded Thumbnails Strip (only if uploaded) -->
             <div id="userUploadedStrip" style="display: none; background: rgba(255,255,255,0.06); padding: 8px 10px; border-radius: 10px;">
               <div id="userUploadedThumbs" style="display: flex; gap: 6px; overflow-x: auto; align-items: center;"></div>
@@ -363,7 +406,7 @@
                   <h3 id="studioPreviewTitle" style="margin-bottom: 2px;">بژ کشمیری (NP N 1859P)</h3>
                   <span style="font-size: 0.8rem; color: #d4c7b6;" id="studioPreviewDesc">رنگ پلی‌اورتان (<span id="selectedOptionsCount">۱</span> مورد انتخابی)</span>
                 </div>
-                <strong style="font-size: 1.08rem; color: #f3d49c;" id="studioTotalEstimate">حدود ۷۰ میلیون تومان</strong>
+                <strong style="font-size: 1.04rem; color: #f3d49c;" id="studioTotalEstimate">حدود ۷۰ میلیون تومان</strong>
               </div>
             </div>
 

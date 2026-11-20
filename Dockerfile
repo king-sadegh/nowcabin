@@ -2,8 +2,18 @@ FROM node:24-slim
 
 WORKDIR /app
 
+# Install Python CV deps (numpy, pillow) + Chromium headless WebGL runtime for 3D PBR rendering
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-numpy \
+    python3-pil \
+    chromium \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV CHROME_PATH=/usr/bin/chromium
+
 # Create persistent directories
-RUN mkdir -p /app/data /app/uploads
+RUN mkdir -p /app/data /app/uploads /app/uploads/renders /app/uploads/glb
 
 COPY package*.json ./
 RUN npm install --omit=dev --no-audit --no-fund

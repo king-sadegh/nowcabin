@@ -2422,3 +2422,78 @@ th {
     padding: 36px 0 84px;
   }
 }
+
+/* ---------- Compact Kitchen Dimensions Row & Multi-Angle Gallery Strip ---------- */
+.studio-dims-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.dim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dim-field label {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+}
+
+.dim-field input,
+.dim-field select {
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-medium);
+  background: var(--bg-canvas);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.multi-angle-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.angle-thumb-btn {
+  border: 1.5px solid rgba(243, 212, 156, 0.25);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: var(--transition);
+}
+
+.angle-thumb-btn.active {
+  border-color: var(--accent-gold);
+  background: rgba(181, 137, 70, 0.25);
+}
+
+.angle-thumb-btn img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.angle-thumb-btn span {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #f3e8d8;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .studio-dims-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+}

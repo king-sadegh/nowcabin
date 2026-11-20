@@ -111,6 +111,53 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS kitchen_projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER DEFAULT NULL,
+    title TEXT NOT NULL DEFAULT 'پروژه بازسازی آشپزخانه',
+    status TEXT NOT NULL DEFAULT 'draft',
+    customer_photos_json TEXT NOT NULL DEFAULT '[]',
+    dimensions_json TEXT NOT NULL DEFAULT '{}',
+    cv_analysis_json TEXT DEFAULT NULL,
+    missing_dimensions_json TEXT NOT NULL DEFAULT '[]',
+    current_version INTEGER NOT NULL DEFAULT 1,
+    error_log TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS kitchen_scene_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    version_num INTEGER NOT NULL,
+    scene_hash TEXT NOT NULL,
+    scene_json TEXT NOT NULL,
+    validation_json TEXT NOT NULL,
+    change_request_text TEXT DEFAULT '',
+    operations_json TEXT NOT NULL DEFAULT '[]',
+    glb_path TEXT DEFAULT '',
+    pricing_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(project_id, version_num),
+    FOREIGN KEY (project_id) REFERENCES kitchen_projects(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS render_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    version_num INTEGER NOT NULL,
+    scene_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued', 'validating', 'rendering', 'completed', 'failed')),
+    step_label TEXT NOT NULL DEFAULT 'در صف پردازش...',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    max_attempts INTEGER NOT NULL DEFAULT 2,
+    renders_json TEXT NOT NULL DEFAULT '[]',
+    error_message TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (project_id) REFERENCES kitchen_projects(id) ON DELETE CASCADE
+  );
 `);
 
 function getSetting(key, fallback) {
