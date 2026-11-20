@@ -1078,6 +1078,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  let activeProjectId = null;
+  let activeProjectSignature = '';
+  let serverRenders = [];
+  let selectedRenderIdx = 0;
+  let serverPricing = null;
+  const multiAngleStrip = document.getElementById('multiAngleStrip');
+
+  function renderMultiAngleStrip() {
+    if (!multiAngleStrip) return;
+    if (!serverRenders.length || studioViewMode !== 'render') {
+      multiAngleStrip.style.display = 'none';
+      multiAngleStrip.innerHTML = '';
+      return;
+    }
+    multiAngleStrip.style.display = 'grid';
+    multiAngleStrip.innerHTML = '';
+    serverRenders.forEach((item, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `angle-thumb-btn ${idx === selectedRenderIdx ? 'active' : ''}`;
+      btn.innerHTML = `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.label)}" /><span>${escapeHtml(item.label)}</span>`;
+      btn.addEventListener('click', () => {
+        selectedRenderIdx = idx;
+        updateStudioPreviewUI();
+      });
+      multiAngleStrip.appendChild(btn);
+    });
+  }
+
   function updateStudioPreviewUI() {
     document.querySelectorAll('#studioAddonOptions .studio-option-btn').forEach((btn) => {
       btn.classList.toggle('active', activeAddonIds.has(btn.dataset.optionId));
@@ -1087,12 +1116,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const isUsingUserPhoto = activeUserSlotIdx >= 0 && Boolean(studioSlotImages[activeUserSlotIdx]);
+    const hasServerRenderReady = serverRenders.length > 0 && studioViewMode === 'render';
 
-    if (studioPreviewCanvas) {
+    if (hasServerRenderReady && studioPreviewImg) {
+      if (studioPreviewCanvas) studioPreviewCanvas.style.display = 'none';
+      studioPreviewImg.style.display = 'block';
+      const activeView = serverRenders[selectedRenderIdx] || serverRenders[0];
+      studioPreviewImg.src = activeView.url;
+    } else if (studioPreviewCanvas) {
       if (studioPreviewImg) studioPreviewImg.style.display = 'none';
       studioPreviewCanvas.style.display = 'block';
       renderStudioCanvas();
     }
+    renderMultiAngleStrip();
 
     const paintInfo = getActivePaintColors();
     if (studioPreviewBadge) {
@@ -1102,8 +1138,11 @@ document.addEventListener('DOMContentLoaded', () => {
           : 'عکس قبل از بازسازی';
       } else if (studioViewMode === 'sketch') {
         studioPreviewBadge.textContent = `اسکیچ خطی: ${paintInfo.label}`;
+      } else if (hasServerRenderReady) {
+        const activeView = serverRenders[selectedRenderIdx] || serverRenders[0];
+        studioPreviewBadge.textContent = `${activeView.label}: ${paintInfo.label}`;
       } else {
-        studioPreviewBadge.textContent = `رندر سه‌بعدی: ${paintInfo.label}`;
+        studioPreviewBadge.textContent = `پیش‌نمایش: ${paintInfo.label}`;
       }
     }
 
@@ -1122,18 +1161,21 @@ document.addEventListener('DOMContentLoaded', () => {
           : `رنگ پلی‌اورتان (${toPersianDigits(totalSelectedCount)} مورد انتخابی)`;
     }
 
-    // Calculate total estimate based on base 70M + selected addons
-    let totalMillions = 70;
-    activeAddonIds.forEach((id) => {
-      const addon = STUDIO_OPTIONS_MAP[id];
-      if (addon) totalMillions += addon.extraMillions;
-    });
+    if (studioTotalEstimateEl) {
+      if (serverPricing?.range) {
+        studioTotalEstimateEl.textContent = `${toPersianDigits(serverPricing.range.minMillions)} تا ${toPersianDigits(serverPricing.range.maxMillions)} میلیون تومان`;
+      } else {
+        let totalMillions = 70;
+        activeAddonIds.forEach((id) => {
+          const addon = STUDIO_OPTIONS_MAP[id];
+          if (addon) totalMillions += addon.extraMillions;
+        });
+        studioTotalEstimateEl.textContent = `حدود ${toPersianDigits(totalMillions)} میلیون تومان`;
+      }
+    }
 
     if (selectedOptionsCountEl) {
       selectedOptionsCountEl.textContent = toPersianDigits(totalSelectedCount);
-    }
-    if (studioTotalEstimateEl) {
-      studioTotalEstimateEl.textContent = `حدود ${toPersianDigits(totalMillions)} میلیون تومان`;
     }
   }
 
@@ -1147,6 +1189,9 @@ document.addEventListener('DOMContentLoaded', () => {
         upperHex: chip.dataset.paletteHex || '#e6dfd3',
         lowerHex: chip.dataset.paletteLower || chip.dataset.paletteHex || '#c4b7a6',
       };
+      serverRenders = [];
+      selectedRenderIdx = 0;
+      renderMultiAngleStrip();
       if (studioViewMode === 'before') studioViewMode = 'render';
       updateStudioPreviewUI();
     });
@@ -1162,6 +1207,9 @@ document.addEventListener('DOMContentLoaded', () => {
         upperHex: hex,
         lowerHex: hex,
       };
+      serverRenders = [];
+      selectedRenderIdx = 0;
+      renderMultiAngleStrip();
       if (studioViewMode === 'before') studioViewMode = 'render';
       updateStudioPreviewUI();
     });
@@ -1178,6 +1226,9 @@ document.addEventListener('DOMContentLoaded', () => {
         activeAddonIds.add(optId);
         focusedOptionId = optId;
       }
+      serverRenders = [];
+      selectedRenderIdx = 0;
+      renderMultiAngleStrip();
       if (studioViewMode === 'before') studioViewMode = 'render';
       updateStudioPreviewUI();
     });
