@@ -122,10 +122,11 @@ function parseNaturalLanguageToOperations(text) {
     });
   }
 
-  // 6. Backsplash: "بین‌کابینتی" / "کاشی"
-  if (/بین‌کابینتی|بین کابینتی|کاشی/.test(lowerText)) {
-    let backsplashId = 'calacatta_slab';
-    if (/سبز|سرامیک/.test(lowerText)) backsplashId = 'sage_ceramic_tile';
+  // 6. Backsplash: "سرامیک" / "بین‌کابینتی" / "کاشی"
+  if (/بین‌کابینتی|بین کابینتی|کاشی|سرامیک/.test(lowerText)) {
+    let backsplashId = 'modern_ceramic_tile';
+    if (/سبز/.test(lowerText)) backsplashId = 'sage_ceramic_tile';
+    else if (/ماربل|مرمر|کالاکاتا|اسلب/.test(lowerText)) backsplashId = 'calacatta_slab';
     else if (/کلاسیک|مترو|ساب/.test(lowerText)) backsplashId = 'warm_subway_tile';
     operations.push({
       op: 'change_backsplash',

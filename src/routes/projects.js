@@ -13,9 +13,9 @@ const { GLB_DIR, enqueueRenderJob, retryRenderJob } = require('../workers/render
 
 const router = express.Router();
 
-function buildStructuredOpsFromRequestBody(body = {}) {
+function buildStructuredOpsFromRequestBody(body = {}, existingScene = null) {
   const ops = [];
-  if (body.paletteHex || body.paletteName) {
+  if (body.paletteHex || body.paletteName || body.paletteUpperHex || body.paletteLowerHex) {
     ops.push({
       op: 'change_cabinet_color',
       target: 'all',
@@ -38,9 +38,18 @@ function buildStructuredOpsFromRequestBody(body = {}) {
   }
   if (body.addCoffeeBar === true || body.addCoffeeBar === 'true') {
     ops.push({ op: 'add_coffee_bar', placementHint: 'right_of_fridge' });
+  } else if ((body.addCoffeeBar === false || body.addCoffeeBar === 'false') && existingScene?.coffeeBars?.some((c) => c.id === 'cb_main')) {
+    ops.push({ op: 'remove_component', componentId: 'cb_main' });
   }
   if (body.addIsland === true || body.addIsland === 'true') {
     ops.push({ op: 'add_island' });
+  } else if ((body.addIsland === false || body.addIsland === 'false') && existingScene?.islands?.some((i) => i.id === 'island_main')) {
+    ops.push({ op: 'remove_component', componentId: 'island_main' });
+  }
+  if (body.addLighting === true || body.addLighting === 'true') {
+    ops.push({ op: 'add_lighting', underCabinetLed: true });
+  } else if ((body.addLighting === false || body.addLighting === 'false') && existingScene?.lighting?.underCabinetLed === true) {
+    ops.push({ op: 'add_lighting', underCabinetLed: false });
   }
   if (body.changeText) {
     ops.push(...parseNaturalLanguageToOperations(body.changeText));
@@ -333,7 +342,7 @@ router.post('/:id/changes', (req, res) => {
     }
 
     const baseScene = JSON.parse(latestVersion.scene_json);
-    const ops = buildStructuredOpsFromRequestBody(req.body || {});
+    const ops = buildStructuredOpsFromRequestBody(req.body || {}, baseScene);
     if (ops.length === 0) {
       return res.status(400).json({ error: 'هیچ تغییر معتبری از درخواست شما استخراج نشد؛ لطفاً تغییر مدنظر را واضح‌تر بنویسید یا از کالیته انتخاب کنید.' });
     }

@@ -89,37 +89,47 @@ document.addEventListener('DOMContentLoaded', () => {
       desc: 'ساخت کانتر جزیره کاربردی در مرکز آشپزخانه دقیقاً هم‌رنگ کابینت‌های پلی‌اورتان جدید به همراه صفحه سنگی و نشیمن.',
       previewImage: '/assets/studio-island.jpg',
       beforeImage: '/assets/before-1.jpg',
-      extraMillions: 24,
+      extraMillions: 200,
     },
     add_coffeebar: {
       id: 'add_coffeebar',
       type: 'addon',
       title: 'ساخت کافی‌بار اختصاصی (Coffee Bar)',
-      badge: 'پیش‌نمایش: ساخت استیشن کافی‌بار با شلف چوبی و نور مخفی',
-      desc: 'تبدیل کنج روی صفحه کابینت به کافی‌بار لوکس با شلف‌های چوب طبیعی، نور مخفی گرم و جایگاه ویژه اسپرسوساز و ماگ‌ها.',
+      badge: 'پیش‌نمایش: ساخت استیشن کافی‌بار با شلف چوبی و طراحی مدرن',
+      desc: 'تبدیل کنج روی صفحه کابینت به کافی‌بار لوکس با شلف‌های چوب طبیعی و جایگاه ویژه اسپرسوساز و ماگ‌ها.',
       previewImage: '/assets/studio-coffeebar.jpg',
       beforeImage: '/assets/before-1.jpg',
-      extraMillions: 12,
+      extraMillions: 180,
     },
     refinish_countertop: {
       id: 'refinish_countertop',
       type: 'addon',
-      title: 'رنگ کردن / نوسازی صفحه کابینت',
+      title: 'نوسازی صفحه کابینت',
       badge: 'پیش‌نمایش: نوسازی صفحه کابینت به طرح کوارتز سفید رگه‌دار',
       desc: 'تبدیل صفحه کابینت قدیمی به سطح مدرن طرح سنگ کوارتز سفید رگه‌دار گرم، کاملاً هماهنگ با رنگ پلی‌اورتان جدید.',
       previewImage: '/assets/studio-countertop.jpg',
       beforeImage: '/assets/before-1.jpg',
-      extraMillions: 14,
+      extraMillions: 22,
     },
     change_backsplash: {
       id: 'change_backsplash',
       type: 'addon',
-      title: 'تغییر کاشی بین‌کابینتی به اسلب مدرن + نور مخفی',
-      badge: 'پیش‌نمایش: تغییر کاشی بین‌کابینتی به اسلب ماربل گرم',
-      desc: 'جایگزینی کاشی‌های قدیمی بین‌کابینتی با اسلب یکپارچه طرح ماربل گرم و لاین نوری زیرکابینتی که جلوه رنگ کابینت را دوچندان می‌کند.',
+      title: 'سرامیک بین‌کابینتی',
+      badge: 'پیش‌نمایش: تغییر بین‌کابینتی به سرامیک مدرن',
+      desc: 'جایگزینی بین‌کابینتی قدیمی با سرامیک مدرن و یکدست متناسب با رنگ پلی‌اورتان جدید.',
       previewImage: '/assets/studio-backsplash.jpg',
       beforeImage: '/assets/before-1.jpg',
-      extraMillions: 16,
+      extraMillions: 20,
+    },
+    add_lighting: {
+      id: 'add_lighting',
+      type: 'addon',
+      title: 'نور مخفی زیرکابینتی',
+      badge: 'پیش‌نمایش: اجرای نور مخفی زیر کابینت‌های هوایی',
+      desc: 'اجرای نور مخفی گرم زیر کابینت‌های دیواری برای جلوه دوچندان رنگ پلی‌اورتان و سرامیک بین‌کابینتی.',
+      previewImage: '/assets/studio-backsplash.jpg',
+      beforeImage: '/assets/before-1.jpg',
+      extraMillions: 13,
     },
   };
 
@@ -131,8 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeColorOptionId = 'color_greige';
   let customPaletteSelection = {
     name: 'بژ کشمیری (NP N 1859P)',
-    upperHex: '#e6dfd3',
-    lowerHex: '#c4b7a6',
+    upperHex: '#d9cebf',
+    lowerHex: '#d9cebf',
+    upperOverrideName: null,
   };
   const activeAddonIds = new Set();
   let focusedOptionId = 'color_greige';
@@ -196,16 +207,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getActivePaintColors() {
     if (customPaletteSelection) {
+      const label = customPaletteSelection.upperOverrideName
+        ? `${customPaletteSelection.name} (هوایی: ${customPaletteSelection.upperOverrideName})`
+        : customPaletteSelection.name;
       return {
         upper: hexToRgb(customPaletteSelection.upperHex),
         lower: hexToRgb(customPaletteSelection.lowerHex),
-        label: customPaletteSelection.name,
+        label,
       };
     }
     const opt = STUDIO_OPTIONS_MAP[activeColorOptionId] || STUDIO_OPTIONS_MAP.color_greige;
     return {
-      upper: hexToRgb(opt.upperHex || '#d7cec2'),
-      lower: hexToRgb(opt.lowerHex || '#9f9284'),
+      upper: hexToRgb(opt.upperHex || '#d9cebf'),
+      lower: hexToRgb(opt.lowerHex || '#d9cebf'),
       label: opt.title,
     };
   }
@@ -340,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasCountertop = activeAddonIds.has('refinish_countertop');
     const hasCoffeeBar = activeAddonIds.has('add_coffeebar');
     const hasIsland = activeAddonIds.has('add_island');
+    const hasLighting = activeAddonIds.has('add_lighting');
 
     ctx.save();
     // 1. Warm Architectural Paper Background & Ceiling/Walls
@@ -450,35 +465,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const lowerH = Math.round(h * 0.205);
     const lowerBot = lowerTop + lowerH;
 
-    // 4. Backsplash (بین‌کابینتی) — Standard Tile Grid vs Luxury Veined Marble Slab + LED
+    // 4. Backsplash (بین‌کابینتی) — Baseline Subway Tile vs Modern Ceramic Tile
     if (hasBacksplash) {
-      const mGrad = ctx.createLinearGradient(cabLeft, bsTop, cabRight, bsBot);
-      mGrad.addColorStop(0, '#f9f5ee');
-      mGrad.addColorStop(0.5, '#f1e9dc');
-      mGrad.addColorStop(1, '#e8decb');
-      ctx.fillStyle = mGrad;
+      const cGrad = ctx.createLinearGradient(cabLeft, bsTop, cabRight, bsBot);
+      cGrad.addColorStop(0, '#f4f0e8');
+      cGrad.addColorStop(0.5, '#eae4da');
+      cGrad.addColorStop(1, '#e1d9cc');
+      ctx.fillStyle = cGrad;
       ctx.fillRect(cabLeft, bsTop, cabW, bsH);
 
-      // Delicate Calacatta marble veins
-      ctx.strokeStyle = 'rgba(175, 145, 98, 0.36)';
-      ctx.lineWidth = 1.8;
-      for (let v = 0; v < 6; v++) {
-        const vx = cabLeft + (cabW / 6) * v + 25;
+      // Modern large-format ceramic tile seams
+      ctx.strokeStyle = 'rgba(130, 118, 102, 0.28)';
+      ctx.lineWidth = 1.2;
+      const midY = Math.round(bsTop + bsH / 2);
+      ctx.beginPath();
+      ctx.moveTo(cabLeft, midY);
+      ctx.lineTo(cabRight, midY);
+      ctx.stroke();
+      for (let cx = cabLeft + 76; cx < cabRight; cx += 76) {
         ctx.beginPath();
-        ctx.moveTo(vx, bsTop + 4);
-        ctx.bezierCurveTo(vx + 35, bsTop + bsH * 0.4, vx - 20, bsTop + bsH * 0.7, vx + 45, bsBot - 4);
+        ctx.moveTo(cx, bsTop);
+        ctx.lineTo(cx, bsBot);
         ctx.stroke();
       }
-
-      // Warm Under-Cabinet Hidden LED Light Line
-      const ledGlow = ctx.createLinearGradient(0, bsTop, 0, bsTop + bsH * 0.55);
-      ledGlow.addColorStop(0, 'rgba(255, 210, 125, 0.75)');
-      ledGlow.addColorStop(1, 'rgba(255, 210, 125, 0)');
-      ctx.fillStyle = ledGlow;
-      ctx.fillRect(cabLeft, bsTop, cabW, bsH * 0.55);
-
-      ctx.fillStyle = '#fff5d6';
-      ctx.fillRect(cabLeft + 4, bsTop, cabW - 8, 3);
     } else {
       ctx.fillStyle = '#e7dfd2';
       ctx.fillRect(cabLeft, bsTop, cabW, bsH);
@@ -503,6 +512,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
+
+    // Separate Under-Cabinet Hidden LED Lighting (نور مخفی)
+    if (hasLighting) {
+      const ledGlow = ctx.createLinearGradient(0, bsTop, 0, bsTop + bsH * 0.72);
+      ledGlow.addColorStop(0, 'rgba(255, 214, 128, 0.85)');
+      ledGlow.addColorStop(1, 'rgba(255, 214, 128, 0)');
+      ctx.fillStyle = ledGlow;
+      ctx.fillRect(cabLeft, bsTop, cabW, bsH * 0.72);
+
+      ctx.fillStyle = '#fff6da';
+      ctx.fillRect(cabLeft + 4, bsTop, cabW - 8, 4);
+    }
+
     ctx.strokeStyle = 'rgba(42, 33, 27, 0.65)';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(cabLeft, bsTop, cabW, bsH);
@@ -811,8 +833,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeAddonsList = [];
     if (hasIsland) activeAddonsList.push('ساخت جزیره');
     if (hasCoffeeBar) activeAddonsList.push('کافی‌بار');
-    if (hasCountertop) activeAddonsList.push('صفحه کوارتز');
-    if (hasBacksplash) activeAddonsList.push('اسلب بین‌کابینتی');
+    if (hasCountertop) activeAddonsList.push('نوسازی صفحه');
+    if (hasBacksplash) activeAddonsList.push('سرامیک بین‌کابینتی');
+    if (hasLighting) activeAddonsList.push('نور مخفی');
 
     const summaryLine =
       activeAddonsList.length > 0
@@ -1179,17 +1202,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Click handlers for Color Swatch Palette (کالیته رنگ دلخواه)
+  // Helper to reset upper cabinet selector back to "هم‌رنگ زمینی" when main palette color is picked
+  const upperMatchDot = document.getElementById('upperMatchDot');
+  function resetUpperPaletteMatch(mainHex) {
+    if (upperMatchDot) {
+      upperMatchDot.style.background = mainHex;
+    }
+    const upperChips = document.querySelectorAll('#upperPaletteSwatchesList .upper-chip');
+    upperChips.forEach((uc) => {
+      uc.classList.toggle('active', uc.dataset.upperMode === 'match');
+    });
+  }
+
+  // Click handlers for Color Swatch Palette (کالیته رنگ دلخواه - اعمال هم‌زمان روی زمینی و هوایی)
   document.querySelectorAll('#paletteSwatchesList .palette-chip').forEach((chip) => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('#paletteSwatchesList .palette-chip').forEach((c) => c.classList.remove('active'));
       chip.classList.add('active');
+      const mainHex = chip.dataset.paletteHex || '#d9cebf';
       customPaletteSelection = {
         name: chip.dataset.paletteName || 'رنگ انتخابی از کالیته',
-        upperHex: chip.dataset.paletteHex || '#e6dfd3',
-        lowerHex: chip.dataset.paletteLower || chip.dataset.paletteHex || '#c4b7a6',
+        upperHex: mainHex,
+        lowerHex: mainHex,
+        upperOverrideName: null,
       };
+      resetUpperPaletteMatch(mainHex);
       serverRenders = [];
+      serverPricing = null;
       selectedRenderIdx = 0;
       renderMultiAngleStrip();
       if (studioViewMode === 'before') studioViewMode = 'render';
@@ -1206,8 +1245,11 @@ document.addEventListener('DOMContentLoaded', () => {
         name: `رنگ سفارشی کالیته (${hex.toUpperCase()})`,
         upperHex: hex,
         lowerHex: hex,
+        upperOverrideName: null,
       };
+      resetUpperPaletteMatch(hex);
       serverRenders = [];
+      serverPricing = null;
       selectedRenderIdx = 0;
       renderMultiAngleStrip();
       if (studioViewMode === 'before') studioViewMode = 'render';
@@ -1215,7 +1257,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Click handlers for Addon Options (Island, Coffee Bar, Countertop, Backsplash)
+  // Click handlers for Optional Upper Cabinet Color Override (تغییر رنگ جداگانه کابینت‌های هوایی)
+  document.querySelectorAll('#upperPaletteSwatchesList .upper-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#upperPaletteSwatchesList .upper-chip').forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      const isMatch = chip.dataset.upperMode === 'match';
+      if (isMatch) {
+        customPaletteSelection.upperHex = customPaletteSelection.lowerHex;
+        customPaletteSelection.upperOverrideName = null;
+      } else {
+        customPaletteSelection.upperHex = chip.dataset.upperHex || '#f7f5f0';
+        customPaletteSelection.upperOverrideName = chip.dataset.upperName || 'رنگ مکمل هوایی';
+      }
+      serverRenders = [];
+      serverPricing = null;
+      selectedRenderIdx = 0;
+      renderMultiAngleStrip();
+      if (studioViewMode === 'before') studioViewMode = 'render';
+      updateStudioPreviewUI();
+    });
+  });
+
+  // Click handlers for Addon Options (Island, Coffee Bar, Countertop, Ceramic Backsplash, Hidden Lighting)
   document.querySelectorAll('#studioAddonOptions .studio-option-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const optId = btn.dataset.optionId;
@@ -1227,6 +1291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         focusedOptionId = optId;
       }
       serverRenders = [];
+      serverPricing = null;
       selectedRenderIdx = 0;
       renderMultiAngleStrip();
       if (studioViewMode === 'before') studioViewMode = 'render';
@@ -1348,8 +1413,9 @@ document.addEventListener('DOMContentLoaded', () => {
               paletteLowerHex: customPaletteSelection?.lowerHex,
               addIsland: activeAddonIds.has('add_island'),
               addCoffeeBar: activeAddonIds.has('add_coffeebar'),
-              countertopId: activeAddonIds.has('refinish_countertop') ? 'quartz_white_veined' : undefined,
-              backsplashId: activeAddonIds.has('change_backsplash') ? 'calacatta_slab' : undefined,
+              addLighting: activeAddonIds.has('add_lighting'),
+              countertopId: activeAddonIds.has('refinish_countertop') ? 'quartz_white_veined' : 'standard_beige_stone',
+              backsplashId: activeAddonIds.has('change_backsplash') ? 'modern_ceramic_tile' : 'warm_subway_tile',
               changeText,
             }),
           });
@@ -1366,8 +1432,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (customPaletteSelection?.lowerHex) fd.append('paletteLowerHex', customPaletteSelection.lowerHex);
           if (activeAddonIds.has('add_island')) fd.append('addIsland', 'true');
           if (activeAddonIds.has('add_coffeebar')) fd.append('addCoffeeBar', 'true');
+          if (activeAddonIds.has('add_lighting')) fd.append('addLighting', 'true');
           if (activeAddonIds.has('refinish_countertop')) fd.append('countertopId', 'quartz_white_veined');
-          if (activeAddonIds.has('change_backsplash')) fd.append('backsplashId', 'calacatta_slab');
+          if (activeAddonIds.has('change_backsplash')) fd.append('backsplashId', 'modern_ceramic_tile');
           if (changeText) fd.append('changeText', changeText);
 
           data = await apiFetch('/api/projects', {
@@ -1448,9 +1515,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const inspNotes = document.getElementById('inspNotes');
 
   function getSelectedStudioSummaryText() {
-    const colorLabel = customPaletteSelection
-      ? customPaletteSelection.name
-      : STUDIO_OPTIONS_MAP[activeColorOptionId]?.title || '';
+    const colorLabel = getActivePaintColors().label;
     const addonTitles = Array.from(activeAddonIds)
       .map((id) => STUDIO_OPTIONS_MAP[id]?.title)
       .filter(Boolean);

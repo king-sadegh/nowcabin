@@ -342,7 +342,7 @@ async function run() {
     }
 
     // Under-Cabinet Warm LED Glow Strip
-    if (isUpper && KS.lighting?.underCabinetLed !== false) {
+    if (isUpper && KS.lighting?.underCabinetLed === true) {
       const ledBar = new THREE.Mesh(new THREE.BoxGeometry(cw - 0.06, 0.008, 0.018), ledStripMat);
       ledBar.position.set(0, -0.004, -cd / 2 + 0.05);
       cabGroup.add(ledBar);

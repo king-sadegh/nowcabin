@@ -121,11 +121,11 @@ async function reconstructKitchenFromPhotosAndDimensions({ imagePaths = [], dime
 
   scene.materials = {
     cabinetFinishId: 'cashmere_beige',
-    upperColor: '#e6dfd3', // Default proposed NoKabin renovation look; original recorded in metadata
-    lowerColor: '#c4b7a6',
+    upperColor: '#d9cebf', // Default unified NoKabin polyurethane look; original recorded in metadata
+    lowerColor: '#d9cebf',
     cabinetSurfaceType: 'polyurethane_satin',
-    countertopId: 'quartz_white_veined',
-    backsplashId: 'calacatta_slab',
+    countertopId: 'standard_beige_stone',
+    backsplashId: 'warm_subway_tile',
     handleId: 'matte_black',
   };
 

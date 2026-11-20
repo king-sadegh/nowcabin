@@ -166,6 +166,14 @@ const BACKSPLASH_MATERIALS = {
     roughness: 0.25,
     textureType: 'subway_tile',
   },
+  modern_ceramic_tile: {
+    id: 'modern_ceramic_tile',
+    nameFa: 'سرامیک مدرن بین‌کابینتی',
+    hex: '#eae6df',
+    groutHex: '#bfb6a8',
+    roughness: 0.22,
+    textureType: 'subway_tile',
+  },
 };
 
 const HANDLE_STYLES = {
@@ -208,31 +216,31 @@ function findColorMatch(query) {
   if (!q) return null;
 
   if (/کرم|استخوانی|cream|ivory|alabaster/.test(q)) {
-    return { upperHex: '#f4efe6', lowerHex: '#e3dacb', nameFa: 'کرم استخوانی گرم', finishId: 'bone_cream' };
+    return { upperHex: '#f4efe6', lowerHex: '#f4efe6', nameFa: 'کرم استخوانی گرم', finishId: 'bone_cream' };
   }
   if (/سفید|white|نوردیک/.test(q)) {
-    return { upperHex: '#f6f4ef', lowerHex: '#ebe7de', nameFa: 'سفید گرم ابریشمی', finishId: 'bone_cream' };
+    return { upperHex: '#f6f4ef', lowerHex: '#f6f4ef', nameFa: 'سفید گرم ابریشمی', finishId: 'bone_cream' };
   }
   if (/کشمیری|بژ|cashmere|beige/.test(q)) {
-    return { upperHex: '#e6dfd3', lowerHex: '#c4b7a6', nameFa: 'بژ کشمیری', finishId: 'cashmere_beige' };
+    return { upperHex: '#d9cebf', lowerHex: '#d9cebf', nameFa: 'بژ کشمیری', finishId: 'cashmere_beige' };
   }
   if (/گریژ|greige/.test(q)) {
-    return { upperHex: '#dcd3c7', lowerHex: '#a39585', nameFa: 'گریژ گرم', finishId: 'warm_greige' };
+    return { upperHex: '#cfc5b8', lowerHex: '#cfc5b8', nameFa: 'گریژ گرم', finishId: 'warm_greige' };
   }
   if (/تاپه|taupe/.test(q)) {
-    return { upperHex: '#cec5b8', lowerHex: '#8c7f70', nameFa: 'تاپه گرم', finishId: 'warm_taupe' };
+    return { upperHex: '#9b8d7e', lowerHex: '#9b8d7e', nameFa: 'تاپه گرم', finishId: 'warm_taupe' };
   }
   if (/طوسی|نقره‌ای|خاکستری|gray|grey|silver/.test(q)) {
-    return { upperHex: '#d8dde0', lowerHex: '#7c878e', nameFa: 'طوسی نقره‌ای', finishId: 'silver_mist' };
+    return { upperHex: '#8e98a0', lowerHex: '#8e98a0', nameFa: 'طوسی نقره‌ای', finishId: 'silver_mist' };
   }
   if (/سبز|اکالیپتوس|زیتونی|سیج|green|sage/.test(q)) {
-    return { upperHex: '#e8ece9', lowerHex: '#697d72', nameFa: 'سبز اکالیپتوس', finishId: 'eucalyptus_green' };
+    return { upperHex: '#697d72', lowerHex: '#697d72', nameFa: 'سبز اکالیپتوس', finishId: 'eucalyptus_green' };
   }
   if (/سرمه‌ای|آبی|navy|blue/.test(q)) {
-    return { upperHex: '#ece8e1', lowerHex: '#2f3e4e', nameFa: 'سرمه‌ای نئوکلاسیک', finishId: 'classic_navy' };
+    return { upperHex: '#2f3e4e', lowerHex: '#2f3e4e', nameFa: 'سرمه‌ای نئوکلاسیک', finishId: 'classic_navy' };
   }
   if (/موکا|قهوه‌ای|mocha|brown/.test(q)) {
-    return { upperHex: '#e5dacb', lowerHex: '#6e5544', nameFa: 'موکا مدرن', finishId: 'mocha_modern' };
+    return { upperHex: '#6e5544', lowerHex: '#6e5544', nameFa: 'موکا مدرن', finishId: 'mocha_modern' };
   }
   if (/^#[0-9a-f]{6}$/i.test(q)) {
     return { upperHex: q, lowerHex: q, nameFa: `رنگ سفارشی (${q.toUpperCase()})`, finishId: 'custom' };

@@ -120,15 +120,15 @@ function createEmptyScene({
     islands: [],
     materials: {
       cabinetFinishId: 'cashmere_beige',
-      upperColor: '#e6dfd3',
-      lowerColor: '#c4b7a6',
+      upperColor: '#d9cebf',
+      lowerColor: '#d9cebf',
       cabinetSurfaceType: 'polyurethane_satin',
-      countertopId: 'quartz_white_veined',
-      backsplashId: 'calacatta_slab',
+      countertopId: 'standard_beige_stone',
+      backsplashId: 'warm_subway_tile',
       handleId: 'matte_black',
     },
     lighting: {
-      underCabinetLed: true,
+      underCabinetLed: false,
       warmthKelvin: 3500,
       ceilingSpots: [
         { position: [Number((width * 0.25).toFixed(2)), ceilingHeight - 0.02, Number((depth * 0.35).toFixed(2))] },

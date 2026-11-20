@@ -53,33 +53,34 @@ function calculateKitchenPricing(scene) {
   const handleUnitPrice = scene.materials?.handleId === 'brushed_brass' ? 520000 : 380000;
   const handlesToman = handlesCount * handleUnitPrice;
 
-  // Structural & surface upgrades
+  // Structural, surface & lighting upgrades
   let addonsToman = 0;
   const addonItems = [];
 
-  if ((scene.coffeeBars || []).length > 0) {
-    const cbCost = 12500000;
-    addonsToman += cbCost;
-    addonItems.push({ label: 'ساخت استیشن کافی‌بار', amountToman: cbCost });
-  }
   if ((scene.islands || []).length > 0) {
-    const isl = scene.islands[0];
-    const box = getComponentAABB(isl);
-    const islCost = Math.round(18000000 + (box.worldW * box.worldD) * 5500000);
+    const islCost = 200000000;
     addonsToman += islCost;
     addonItems.push({ label: 'ساخت جزیره مدرن هم‌رنگ کابینت', amountToman: islCost });
   }
+  if ((scene.coffeeBars || []).length > 0) {
+    const cbCost = 180000000;
+    addonsToman += cbCost;
+    addonItems.push({ label: 'ساخت استیشن کافی‌بار', amountToman: cbCost });
+  }
   if (scene.materials?.countertopId && scene.materials.countertopId !== 'standard_beige_stone') {
-    const ctLen = (scene.countertops || []).reduce((s, ct) => s + (Number(ct.size?.width) || 0), 0);
-    const ctCost = Math.round(Math.max(9000000, ctLen * 3200000));
+    const ctCost = 22000000;
     addonsToman += ctCost;
     addonItems.push({ label: 'نوسازی صفحه کابینت', amountToman: ctCost });
   }
   if (scene.materials?.backsplashId && scene.materials.backsplashId !== 'warm_subway_tile') {
-    const bsLen = (scene.backsplashes || []).reduce((s, bs) => s + (Number(bs.size?.width) || 0), 0);
-    const bsCost = Math.round(Math.max(10000000, bsLen * 3400000));
+    const bsCost = 20000000;
     addonsToman += bsCost;
-    addonItems.push({ label: 'تغییر بین‌کابینتی + نور مخفی', amountToman: bsCost });
+    addonItems.push({ label: 'اجرای سرامیک بین‌کابینتی', amountToman: bsCost });
+  }
+  if (scene.lighting?.underCabinetLed === true) {
+    const ledCost = 13000000;
+    addonsToman += ledCost;
+    addonItems.push({ label: 'اجرای نور مخفی زیرکابینتی', amountToman: ledCost });
   }
 
   const baseRenovationSubtotal = paintAndFinishToman + repairAndPrepToman + disassemblyAndInstallToman + transportToman + handlesToman;
