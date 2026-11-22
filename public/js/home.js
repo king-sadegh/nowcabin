@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 3. Interactive Sample Kitchen Visual Catalog (Canvas Compositor on Iranian Kitchen)
+  // 3. Interactive Sample Kitchen Visual Catalog (100% Photorealistic Close-up + Wide AI-Composited Layers)
   const catalogPreviewCanvas = document.getElementById('catalogPreviewCanvas');
   const catalogCtx = catalogPreviewCanvas ? catalogPreviewCanvas.getContext('2d') : null;
   const catalogPreviewBadge = document.getElementById('catalogPreviewBadge');
@@ -50,10 +50,16 @@ document.addEventListener('DOMContentLoaded', () => {
     handle_black: '/uploads/sample-kitchen/handles/overlay_black.png',
     handle_gold: '/uploads/sample-kitchen/handles/overlay_gold.png',
     subway_white: '/uploads/sample-kitchen/backsplash/overlay_subway_white.png',
-    panel_base: '/uploads/sample-kitchen/textures/cabinet_panel_base.jpg',
-    marble_light_tex: '/uploads/sample-kitchen/textures/marble_light_tex.jpg',
-    marble_dark_tex: '/uploads/sample-kitchen/textures/marble_dark_tex.jpg',
+    wide_light_marble: '/uploads/sample-kitchen/wide/overlay_light_marble.png',
+    wide_dark_marble: '/uploads/sample-kitchen/wide/overlay_dark_marble.png',
+    wide_subway_white: '/uploads/sample-kitchen/wide/overlay_subway_white.png',
+    wide_island_lm: '/uploads/sample-kitchen/wide/island/ct_light_marble.png',
+    wide_island_dm: '/uploads/sample-kitchen/wide/island/ct_dark_marble.png',
   };
+
+  // Exact crop offsets used when generating cropped photorealistic island & tall arched coffee bar cutouts
+  const ISLAND_POS = { x: 90, y: 500 };
+  const COFFEEBAR_POS = { x: 845, y: 105 };
 
   const catalogState = {
     isBeforeMode: true,
@@ -88,7 +94,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return img;
   }
 
-  // Preload base, overlays, textures, and all chip images
+  function getWideColorUrl(colorId) {
+    return `/uploads/sample-kitchen/wide/colors/${colorId || 'before'}.jpg`;
+  }
+  function getWideIslandUrl(colorId) {
+    return `/uploads/sample-kitchen/wide/island/${colorId || 'before'}.png`;
+  }
+  function getWideCoffeeBarUrl(colorId) {
+    return `/uploads/sample-kitchen/wide/coffeebar/${colorId || 'before'}.png`;
+  }
+
+  // Preload core images immediately for zero-lag switching
   loadCatalogImage(BASE_BEFORE_IMAGE);
   Object.values(OVERLAY_URLS).forEach((url) => loadCatalogImage(url));
   document.querySelectorAll('#catalogOptionsPanel [data-img]').forEach((el) => {
@@ -97,8 +113,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function drawCncDoorGrooves(ctx, x, y, w, h, pattern) {
     if (pattern === 'none' || w < 26 || h < 26) return;
-    const shadow = 'rgba(18, 16, 14, 0.28)';
-    const highlight = 'rgba(255, 255, 255, 0.26)';
+    const shadow = 'rgba(18, 16, 14, 0.30)';
+    const highlight = 'rgba(255, 255, 255, 0.28)';
 
     function strokeBevelRect(rx, ry, rw, rh, radius = 0) {
       ctx.save();
@@ -119,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (pattern === 'shaker') {
-      const p = Math.min(12, Math.floor(Math.min(w, h) * 0.14));
+      const p = Math.min(13, Math.floor(Math.min(w, h) * 0.14));
       strokeBevelRect(x + p, y + p, w - p * 2, h - p * 2, 1);
     } else if (pattern === 'beveled') {
       const p1 = Math.min(10, Math.floor(Math.min(w, h) * 0.12));
@@ -129,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         strokeBevelRect(x + p2, y + p2, w - p2 * 2, h - p2 * 2, 1);
       }
     } else if (pattern === 'fluted') {
-      const p = 9;
+      const p = Math.min(10, Math.floor(Math.min(w, h) * 0.12));
       strokeBevelRect(x + p, y + p, w - p * 2, h - p * 2, 1);
       ctx.save();
       for (let gx = x + p + 8; gx < x + w - p - 4; gx += 9) {
@@ -175,371 +191,211 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Photorealistic cabinet face using actual kitchen cabinet texture + luminance-preserving color tint + 3D shading
-  function drawPhotorealCabinetBox(ctx, x, y, w, h, hexColor, doorCount, cncPattern, finishId, handleId) {
+  function drawMetallicBarHandle(ctx, x, y, w, h, handleId) {
+    if (handleId === 'silver') return;
     ctx.save();
-    // Base color fill
-    ctx.fillStyle = hexColor || '#c8b396';
-    ctx.fillRect(x, y, w, h);
-
-    // Overlay real photographic cabinet surface grain/lighting
-    const panelTex = loadCatalogImage(OVERLAY_URLS.panel_base);
-    if (panelTex && panelTex.complete && panelTex.naturalWidth > 0) {
-      ctx.globalCompositeOperation = 'soft-light';
-      ctx.globalAlpha = 0.72;
-      ctx.drawImage(panelTex, x, y, w, h);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-    }
-
-    // Natural directional studio lighting gradient (left window light -> right warm shadow)
-    const dirShade = ctx.createLinearGradient(x, y, x + w, y + h);
-    dirShade.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
-    dirShade.addColorStop(0.5, 'rgba(0, 0, 0, 0.02)');
-    dirShade.addColorStop(1, 'rgba(0, 0, 0, 0.24)');
-    ctx.fillStyle = dirShade;
-    ctx.fillRect(x, y, w, h);
-
-    // Top shadow under countertop overhang
-    const overhangShadow = ctx.createLinearGradient(0, y, 0, y + 18);
-    overhangShadow.addColorStop(0, 'rgba(15, 12, 10, 0.45)');
-    overhangShadow.addColorStop(1, 'rgba(15, 12, 10, 0)');
-    ctx.fillStyle = overhangShadow;
-    ctx.fillRect(x, y, w, 18);
-
-    // Recessed toe-kick plinth at bottom
-    const kickH = Math.max(14, Math.floor(h * 0.1));
-    ctx.fillStyle = 'rgba(18, 16, 14, 0.72)';
-    ctx.fillRect(x + 4, y + h - kickH, w - 8, kickH);
-
-    // Individual realistic cabinet doors + CNC + handles
-    const doorsH = h - kickH - 4;
-    const gap = 3;
-    const doorW = (w - gap * (doorCount + 1)) / doorCount;
-    const handleCol = handleId === 'black' ? '#222427' : handleId === 'gold' ? '#c9a156' : '#cfd4da';
-
-    for (let i = 0; i < doorCount; i++) {
-      const dx = x + gap + i * (doorW + gap);
-      const dy = y + 3;
-      // Door shadow seam
-      ctx.strokeStyle = 'rgba(15, 12, 10, 0.38)';
-      ctx.lineWidth = 1.4;
-      ctx.strokeRect(dx, dy, doorW, doorsH);
-      // Subtle highlight edge on left/top of door
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(dx + 1, dy + doorsH - 1);
-      ctx.lineTo(dx + 1, dy + 1);
-      ctx.lineTo(dx + doorW - 1, dy + 1);
-      ctx.stroke();
-
-      // CNC pattern on each door
-      drawCncDoorGrooves(ctx, dx, dy, doorW, doorsH, cncPattern);
-
-      // Minimalist bar handle
-      const hx = i % 2 === 0 ? dx + doorW - 12 : dx + 9;
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(hx + 1.5, dy + 14, 3, 28);
-      ctx.fillStyle = handleCol;
-      ctx.fillRect(hx, dy + 13, 3, 28);
-    }
-
-    if (finishId === 'glossy') {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + w * 0.42, y);
-      ctx.lineTo(x + w * 0.18, y + doorsH);
-      ctx.lineTo(x, y + doorsH);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function drawPhotorealCountertopSlab(ctx, x, y, w, h, countertopId) {
-    ctx.save();
-    if (countertopId === 'light_marble') {
-      const tex = loadCatalogImage(OVERLAY_URLS.marble_light_tex);
-      if (tex && tex.complete && tex.naturalWidth > 0) {
-        ctx.drawImage(tex, 80, 180, w, h * 1.4, x, y, w, h);
-      } else {
-        ctx.fillStyle = '#f2efe9';
-        ctx.fillRect(x, y, w, h);
-      }
-    } else if (countertopId === 'dark_marble') {
-      const tex = loadCatalogImage(OVERLAY_URLS.marble_dark_tex);
-      if (tex && tex.complete && tex.naturalWidth > 0) {
-        ctx.drawImage(tex, 80, 180, w, h * 1.4, x, y, w, h);
-      } else {
-        ctx.fillStyle = '#1e2024';
-        ctx.fillRect(x, y, w, h);
-      }
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.fillRect(x + 1.5, y + 1.5, w, h);
+    if (handleId === 'black') {
+      const g = ctx.createLinearGradient(x, y, x + w, y);
+      g.addColorStop(0, '#3a3d42');
+      g.addColorStop(0.5, '#1b1d20');
+      g.addColorStop(1, '#111214');
+      ctx.fillStyle = g;
     } else {
-      const grad = ctx.createLinearGradient(x, y, x + w, y + h);
-      grad.addColorStop(0, '#c69e72');
-      grad.addColorStop(0.5, '#b88f64');
-      grad.addColorStop(1, '#9d754d');
-      ctx.fillStyle = grad;
-      ctx.fillRect(x, y, w, h);
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, '#e3c47a');
+      g.addColorStop(0.5, '#c2994c');
+      g.addColorStop(1, '#99722c');
+      ctx.fillStyle = g;
     }
-
-    // 3D top bevel highlight & front edge thickness
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
-    ctx.fillRect(x, y, w, 2.5);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
-    ctx.fillRect(x, y + h - 5, w, 5);
+    ctx.fillRect(x, y, w, h);
     ctx.restore();
   }
 
-  function drawCoffeeBarRight(ctx, state) {
-    ctx.save();
-    // Ambient shadow on left wall & floor
-    const wallShadow = ctx.createLinearGradient(914, 150, 944, 150);
-    wallShadow.addColorStop(0, 'rgba(15, 12, 10, 0)');
-    wallShadow.addColorStop(1, 'rgba(15, 12, 10, 0.32)');
-    ctx.fillStyle = wallShadow;
-    ctx.fillRect(914, 150, 30, 610);
+  function renderWidePhotorealScene(W, H) {
+    const colorId = catalogState.lowerId || 'before';
+    const hasIsland = catalogState.extras.has('island');
+    const hasCoffeeBar = catalogState.extras.has('coffeebar');
 
-    const floorShadow = ctx.createRadialGradient(1065, 764, 30, 1065, 764, 150);
-    floorShadow.addColorStop(0, 'rgba(15, 12, 10, 0.42)');
-    floorShadow.addColorStop(1, 'rgba(15, 12, 10, 0)');
-    ctx.fillStyle = floorShadow;
-    ctx.fillRect(910, 740, 290, 48);
-
-    // Tall natural walnut/oak slatted backdrop
-    const woodGrad = ctx.createLinearGradient(942, 155, 1194, 495);
-    woodGrad.addColorStop(0, '#8b633f');
-    woodGrad.addColorStop(0.5, '#785433');
-    woodGrad.addColorStop(1, '#5a3c22');
-    ctx.fillStyle = woodGrad;
-    ctx.fillRect(942, 155, 252, 340);
-
-    for (let sx = 952; sx < 1192; sx += 13) {
-      ctx.fillStyle = 'rgba(24, 14, 6, 0.44)';
-      ctx.fillRect(sx, 157, 3, 336);
-      ctx.fillStyle = 'rgba(255, 232, 200, 0.09)';
-      ctx.fillRect(sx + 3, 157, 2, 336);
+    // 1. Wide base kitchen painted in active lower cabinet color
+    const baseImg = loadCatalogImage(getWideColorUrl(colorId));
+    if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) {
+      catalogCtx.drawImage(baseImg, 0, 0, W, H);
     }
 
-    // Round Dome Pendant Light (نور گنبدی گرد) hanging above Coffee Bar
-    const domeX = 1068;
-    const domeY = 122;
-    ctx.strokeStyle = '#1f2022';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(domeX, 0);
-    ctx.lineTo(domeX, domeY - 24);
-    ctx.stroke();
-
-    const coneGlow = ctx.createRadialGradient(domeX, domeY + 10, 10, domeX, domeY + 150, 180);
-    coneGlow.addColorStop(0, 'rgba(255, 232, 175, 0.65)');
-    coneGlow.addColorStop(0.45, 'rgba(255, 214, 130, 0.24)');
-    coneGlow.addColorStop(1, 'rgba(255, 214, 130, 0)');
-    ctx.fillStyle = coneGlow;
-    ctx.beginPath();
-    ctx.moveTo(domeX - 28, domeY + 6);
-    ctx.lineTo(domeX + 28, domeY + 6);
-    ctx.lineTo(domeX + 125, 490);
-    ctx.lineTo(domeX - 125, 490);
-    ctx.closePath();
-    ctx.fill();
-
-    const domeGrad = ctx.createLinearGradient(domeX - 34, domeY - 26, domeX + 34, domeY + 6);
-    domeGrad.addColorStop(0, '#3a3d42');
-    domeGrad.addColorStop(0.6, '#1f2124');
-    domeGrad.addColorStop(1, '#121315');
-    ctx.fillStyle = domeGrad;
-    ctx.beginPath();
-    ctx.arc(domeX, domeY + 4, 34, Math.PI, 0, false);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#f5d28c';
-    ctx.beginPath();
-    ctx.ellipse(domeX, domeY + 4, 32, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff9e6';
-    ctx.beginPath();
-    ctx.arc(domeX, domeY + 5, 7, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Two floating oak shelves with warm LED glow
-    [232, 330].forEach((sy) => {
-      ctx.fillStyle = '#5a3d24';
-      ctx.fillRect(956, sy, 224, 11);
-      ctx.fillStyle = 'rgba(255,255,255,0.14)';
-      ctx.fillRect(956, sy, 224, 2);
-      const glow = ctx.createLinearGradient(0, sy + 11, 0, sy + 52);
-      glow.addColorStop(0, 'rgba(255, 218, 135, 0.44)');
-      glow.addColorStop(1, 'rgba(255, 218, 135, 0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(956, sy + 11, 224, 41);
-    });
-
-    // Realistic shaded ceramic canisters & mugs
-    [
-      [974, 200, 20, 32, '#ebe5da'],
-      [1000, 207, 17, 25, '#dcd3c4'],
-      [1040, 300, 22, 30, '#2a2e33'],
-      [1068, 305, 18, 25, '#c9ab86'],
-    ].forEach(([jx, jy, jw, jh, jcol]) => {
-      const jg = ctx.createLinearGradient(jx, jy, jx + jw, jy);
-      jg.addColorStop(0, jcol);
-      jg.addColorStop(1, 'rgba(0,0,0,0.22)');
-      ctx.fillStyle = jcol;
-      ctx.fillRect(jx, jy, jw, jh);
-      ctx.fillStyle = 'rgba(0,0,0,0.14)';
-      ctx.fillRect(jx + jw * 0.6, jy, jw * 0.4, jh);
-      ctx.fillStyle = '#705136';
-      ctx.fillRect(jx - 1, jy - 3, jw + 2, 4);
-    });
-
-    // Metallic Espresso Machine with chrome group head & cup
-    const espGrad = ctx.createLinearGradient(988, 414, 1070, 492);
-    espGrad.addColorStop(0, '#555b63');
-    espGrad.addColorStop(0.5, '#2b2f35');
-    espGrad.addColorStop(1, '#191b1e');
-    ctx.fillStyle = espGrad;
-    ctx.fillRect(988, 414, 82, 78);
-    ctx.fillStyle = '#cfd4da';
-    ctx.fillRect(994, 424, 70, 12);
-    ctx.fillStyle = '#181a1d';
-    ctx.fillRect(998, 444, 62, 38);
-    ctx.fillStyle = '#d4d8dd';
-    ctx.fillRect(1022, 444, 14, 12);
-    ctx.fillStyle = '#f5f1e8';
-    ctx.fillRect(1023, 468, 12, 13);
-
-    // Coffee Bar LOWER CABINETS grounded to floor (y=514..760) — dynamically matches main cabinet color, material texture, CNC & finish!
-    drawPhotorealCabinetBox(
-      ctx,
-      942,
-      514,
-      250,
-      246,
-      state.lowerHex,
-      2,
-      state.cncId,
-      state.finishId,
-      state.handleId
-    );
-
-    // Countertop slab matching active countertop
-    drawPhotorealCountertopSlab(ctx, 936, 492, 260, 24, state.countertopId);
-    ctx.restore();
-  }
-
-  function drawKitchenIsland(ctx, state) {
-    ctx.save();
-    // Realistic floor contact shadow
-    const floorShadow = ctx.createRadialGradient(600, 868, 70, 600, 868, 340);
-    floorShadow.addColorStop(0, 'rgba(15, 12, 10, 0.48)');
-    floorShadow.addColorStop(1, 'rgba(15, 12, 10, 0)');
-    ctx.fillStyle = floorShadow;
-    ctx.fillRect(260, 822, 680, 74);
-
-    // Island cabinet body — photorealistic cabinet texture, active color, CNC & finish!
-    drawPhotorealCabinetBox(
-      ctx,
-      348,
-      652,
-      504,
-      198,
-      state.lowerHex,
-      4,
-      state.cncId,
-      state.finishId,
-      state.handleId
-    );
-
-    // Countertop slab matching active countertop
-    drawPhotorealCountertopSlab(ctx, 328, 622, 544, 32, state.countertopId);
-
-    // Two modern curved bar stools with footrests & shadows
-    [465, 735].forEach((cx) => {
-      ctx.fillStyle = 'rgba(0,0,0,0.24)';
-      ctx.beginPath();
-      ctx.ellipse(cx, 872, 32, 7, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#232528';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(cx - 18, 756);
-      ctx.lineTo(cx - 24, 870);
-      ctx.moveTo(cx + 18, 756);
-      ctx.lineTo(cx + 24, 870);
-      ctx.moveTo(cx - 21, 826);
-      ctx.lineTo(cx + 21, 826);
-      ctx.stroke();
-
-      const seatGrad = ctx.createLinearGradient(cx - 32, 734, cx + 32, 758);
-      seatGrad.addColorStop(0, '#a67f58');
-      seatGrad.addColorStop(0.5, '#8c6642');
-      seatGrad.addColorStop(1, '#694a2d');
-      ctx.fillStyle = seatGrad;
-      if (ctx.roundRect) {
-        ctx.beginPath();
-        ctx.roundRect(cx - 32, 738, 64, 20, [8, 8, 4, 4]);
-        ctx.fill();
-      } else {
-        ctx.fillRect(cx - 32, 738, 64, 20);
+    // 2. Separate upper cabinet color (clipped cleanly above countertop y <= 442)
+    if (catalogState.upperId !== 'match') {
+      const upperImg = loadCatalogImage(getWideColorUrl(catalogState.upperId));
+      if (upperImg && upperImg.complete && upperImg.naturalWidth > 0) {
+        catalogCtx.save();
+        catalogCtx.beginPath();
+        catalogCtx.rect(0, 0, W, 442);
+        catalogCtx.clip();
+        catalogCtx.drawImage(upperImg, 0, 0, W, H);
+        catalogCtx.restore();
       }
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      ctx.fillRect(cx - 26, 740, 52, 2);
-    });
-    ctx.restore();
-  }
-
-  function renderCatalogPreview() {
-    if (!catalogCtx || !catalogPreviewCanvas) return;
-    const W = 1200;
-    const H = 896;
-    catalogCtx.clearRect(0, 0, W, H);
-
-    if (catalogState.isBeforeMode) {
-      const beforeImg = loadCatalogImage(BASE_BEFORE_IMAGE);
-      if (beforeImg && beforeImg.complete && beforeImg.naturalWidth > 0) {
-        catalogCtx.drawImage(beforeImg, 0, 0, W, H);
-      }
-      if (catalogPreviewBadge) {
-        catalogPreviewBadge.textContent = 'آشپزخانه نمونه ایرانی — وضعیت اولیه (قبل از بازسازی)';
-      }
-      if (catalogPreviewTitle) {
-        catalogPreviewTitle.textContent = 'وضعیت اولیه آشپزخانه (پیش از بازسازی)';
-      }
-      if (catalogPreviewDesc) {
-        catalogPreviewDesc.textContent = 'کابینت ملامینه قدیمی — برای مشاهده تغییرات، گزینه‌های بازسازی را انتخاب کنید.';
-      }
-      if (catalogResetBeforeBtn) {
-        catalogResetBeforeBtn.classList.add('active');
-        catalogResetBeforeBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>بازگشت به حالت بازسازی‌شده</span>';
-      }
-      return;
     }
 
-    const hasPullback = catalogState.extras.has('island') || catalogState.extras.has('coffeebar');
+    // 3. Zero-bleed photorealistic white beveled subway backsplash
+    if (catalogState.backsplashId === 'subway_white') {
+      const bsImg = loadCatalogImage(OVERLAY_URLS.wide_subway_white);
+      if (bsImg && bsImg.complete && bsImg.naturalWidth > 0) catalogCtx.drawImage(bsImg, 0, 0, W, H);
+    }
 
-    if (hasPullback) {
-      catalogCtx.fillStyle = '#ebe8e2';
-      catalogCtx.fillRect(0, 0, W, 120);
-      catalogCtx.fillStyle = '#dedbd4';
-      catalogCtx.fillRect(0, 120, W, 580);
-      const floorGrad = catalogCtx.createLinearGradient(0, 690, 0, H);
-      floorGrad.addColorStop(0, '#cbbba7');
-      floorGrad.addColorStop(1, '#b7a48e');
-      catalogCtx.fillStyle = floorGrad;
-      catalogCtx.fillRect(0, 690, W, H - 690);
+    // 4. Zero-bleed photorealistic marble countertop on main L-kitchen
+    if (catalogState.countertopId === 'light_marble') {
+      const ctImg = loadCatalogImage(OVERLAY_URLS.wide_light_marble);
+      if (ctImg && ctImg.complete && ctImg.naturalWidth > 0) catalogCtx.drawImage(ctImg, 0, 0, W, H);
+    } else if (catalogState.countertopId === 'dark_marble') {
+      const ctImg = loadCatalogImage(OVERLAY_URLS.wide_dark_marble);
+      if (ctImg && ctImg.complete && ctImg.naturalWidth > 0) catalogCtx.drawImage(ctImg, 0, 0, W, H);
+    }
 
+    // 5. CNC door grooves on wide main kitchen doors
+    if (catalogState.cncId !== 'none') {
+      const wideMainDoors = [
+        [480, 264, 82, 135],
+        [566, 264, 160, 66],
+        [566, 333, 160, 66],
+        [731, 264, 65, 135],
+        [469, 524, 90, 142],
+        [563, 524, 91, 142],
+        [658, 524, 90, 142],
+      ];
+      wideMainDoors.forEach(([dx, dy, dw, dh]) => drawCncDoorGrooves(catalogCtx, dx, dy, dw, dh, catalogState.cncId));
+    }
+
+    // 6. Main wide handles recolor (exact measured silver handle bounds)
+    if (catalogState.handleId !== 'silver') {
+      [
+        [554, 353, 5, 42],
+        [621, 320, 52, 4.5],
+        [621, 390, 52, 4.5],
+        [736, 353, 5, 42],
+        [551, 529, 5, 46],
+        [645, 529, 5, 46],
+        [662, 529, 5, 46],
+      ].forEach(([hx, hy, hw, hh]) => drawMetallicBarHandle(catalogCtx, hx, hy, hw, hh, catalogState.handleId));
+    }
+
+    // 7. Hidden LED under-cabinet lighting (exact back wall + right-wall upper cabinets)
+    if (catalogState.extras.has('lighting')) {
       catalogCtx.save();
-      const scale = 0.8;
-      const offsetX = catalogState.extras.has('coffeebar') ? 22 : 120;
-      const offsetY = 44;
-      catalogCtx.translate(offsetX, offsetY);
-      catalogCtx.scale(scale, scale);
+      catalogCtx.fillStyle = 'rgba(255, 228, 165, 0.94)';
+      catalogCtx.fillRect(479, 405, 318, 3);
+      const backGlow = catalogCtx.createLinearGradient(0, 406, 0, 505);
+      backGlow.addColorStop(0, 'rgba(255, 214, 130, 0.44)');
+      backGlow.addColorStop(1, 'rgba(255, 214, 130, 0)');
+      catalogCtx.fillStyle = backGlow;
+      catalogCtx.fillRect(479, 406, 318, 99);
+
+      // Right-wall upper cabinet section 1 (corner to hood)
+      catalogCtx.strokeStyle = 'rgba(255, 228, 165, 0.92)';
+      catalogCtx.lineWidth = 3;
+      catalogCtx.beginPath();
+      catalogCtx.moveTo(800, 405);
+      catalogCtx.lineTo(845, 398);
+      catalogCtx.stroke();
+      const rg1 = catalogCtx.createLinearGradient(0, 398, 0, 500);
+      rg1.addColorStop(0, 'rgba(255, 214, 130, 0.36)');
+      rg1.addColorStop(1, 'rgba(255, 214, 130, 0)');
+      catalogCtx.fillStyle = rg1;
+      catalogCtx.beginPath();
+      catalogCtx.moveTo(800, 405);
+      catalogCtx.lineTo(845, 398);
+      catalogCtx.lineTo(845, 500);
+      catalogCtx.lineTo(800, 505);
+      catalogCtx.closePath();
+      catalogCtx.fill();
+
+      // Right-wall upper cabinet section 2 (only visible when tall coffee bar isn't covering it)
+      if (!hasCoffeeBar) {
+        catalogCtx.beginPath();
+        catalogCtx.moveTo(902, 393);
+        catalogCtx.lineTo(1040, 376);
+        catalogCtx.stroke();
+        const rg2 = catalogCtx.createLinearGradient(0, 376, 0, 505);
+        rg2.addColorStop(0, 'rgba(255, 214, 130, 0.38)');
+        rg2.addColorStop(1, 'rgba(255, 214, 130, 0)');
+        catalogCtx.fillStyle = rg2;
+        catalogCtx.beginPath();
+        catalogCtx.moveTo(902, 393);
+        catalogCtx.lineTo(1040, 376);
+        catalogCtx.lineTo(1040, 505);
+        catalogCtx.lineTo(902, 500);
+        catalogCtx.closePath();
+        catalogCtx.fill();
+      }
+      catalogCtx.restore();
     }
 
+    // 8. Photorealistic Tall Arched Coffee Bar on Right Side (exact arched design + dynamic cabinet color + dynamic CNC!)
+    if (hasCoffeeBar) {
+      const cbImg = loadCatalogImage(getWideCoffeeBarUrl(colorId));
+      if (cbImg && cbImg.complete && cbImg.naturalWidth > 0) {
+        catalogCtx.drawImage(cbImg, COFFEEBAR_POS.x, COFFEEBAR_POS.y);
+      }
+      if (catalogState.cncId !== 'none') {
+        [
+          [943, 622, 95, 192],
+          [1042, 622, 94, 192],
+        ].forEach(([dx, dy, dw, dh]) => drawCncDoorGrooves(catalogCtx, dx, dy, dw, dh, catalogState.cncId));
+      }
+      if (catalogState.handleId !== 'silver') {
+        drawMetallicBarHandle(catalogCtx, 1031, 634, 6, 66, catalogState.handleId);
+        drawMetallicBarHandle(catalogCtx, 1051, 634, 6, 66, catalogState.handleId);
+      }
+    }
+
+    // 9. Photorealistic Kitchen Island in Center-Left Foreground (dynamic cabinet color + real marble top + dynamic CNC!)
+    if (hasIsland) {
+      const islImg = loadCatalogImage(getWideIslandUrl(colorId));
+      if (islImg && islImg.complete && islImg.naturalWidth > 0) {
+        catalogCtx.drawImage(islImg, ISLAND_POS.x, ISLAND_POS.y);
+      }
+      if (catalogState.countertopId === 'light_marble') {
+        const ict = loadCatalogImage(OVERLAY_URLS.wide_island_lm);
+        if (ict && ict.complete && ict.naturalWidth > 0) catalogCtx.drawImage(ict, ISLAND_POS.x, ISLAND_POS.y);
+      } else if (catalogState.countertopId === 'dark_marble') {
+        const ict = loadCatalogImage(OVERLAY_URLS.wide_island_dm);
+        if (ict && ict.complete && ict.naturalWidth > 0) catalogCtx.drawImage(ict, ISLAND_POS.x, ISLAND_POS.y);
+      }
+      if (catalogState.cncId !== 'none') {
+        [
+          [151, 599, 155, 219],
+          [308, 599, 155, 219],
+          [465, 599, 154, 219],
+        ].forEach(([dx, dy, dw, dh]) => drawCncDoorGrooves(catalogCtx, dx, dy, dw, dh, catalogState.cncId));
+      }
+      if (catalogState.handleId !== 'silver') {
+        drawMetallicBarHandle(catalogCtx, 287, 609, 6, 73, catalogState.handleId);
+        drawMetallicBarHandle(catalogCtx, 445, 609, 6, 73, catalogState.handleId);
+        drawMetallicBarHandle(catalogCtx, 472, 609, 6, 73, catalogState.handleId);
+      }
+    }
+
+    // 10. Subtle Glossy finish architectural sheen
+    if (catalogState.finishId === 'glossy') {
+      catalogCtx.save();
+      catalogCtx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      const sheenBoxes = [[478, 262, 320, 140]];
+      if (hasIsland) sheenBoxes.push([148, 598, 472, 222]);
+      if (hasCoffeeBar) sheenBoxes.push([940, 620, 200, 198]);
+      sheenBoxes.forEach(([sx, sy, sw, sh]) => {
+        catalogCtx.beginPath();
+        catalogCtx.moveTo(sx, sy);
+        catalogCtx.lineTo(sx + sw * 0.44, sy);
+        catalogCtx.lineTo(sx + sw * 0.22, sy + sh);
+        catalogCtx.lineTo(sx, sy + sh);
+        catalogCtx.closePath();
+        catalogCtx.fill();
+      });
+      catalogCtx.restore();
+    }
+  }
+
+  function renderCloseupPhotorealScene(W, H) {
     // 1. Base / lower cabinet color
     const lowerImg = loadCatalogImage(catalogState.lowerImageUrl);
     if (lowerImg && lowerImg.complete && lowerImg.naturalWidth > 0) {
@@ -562,13 +418,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 3. Backsplash ceramic tiles (before countertop & LED so lighting illuminates them)
+    // 3. Zero-bleed photorealistic white beveled subway backsplash
     if (catalogState.backsplashId === 'subway_white') {
       const bsImg = loadCatalogImage(OVERLAY_URLS.subway_white);
       if (bsImg && bsImg.complete && bsImg.naturalWidth > 0) catalogCtx.drawImage(bsImg, 0, 0, W, H);
     }
 
-    // 4. Countertop overlay (Light Marble / Dark Marble)
+    // 4. Zero-bleed photorealistic marble countertop (Light Marble / Dark Marble)
     if (catalogState.countertopId === 'light_marble') {
       const ctImg = loadCatalogImage(OVERLAY_URLS.light_marble);
       if (ctImg && ctImg.complete && ctImg.naturalWidth > 0) catalogCtx.drawImage(ctImg, 0, 0, W, H);
@@ -603,7 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 7. Hidden LED under-cabinet lighting (exact back-wall x=460..864 + right-wall upper cabinets)
     if (catalogState.extras.has('lighting')) {
       catalogCtx.save();
-      // Back wall upper cabinets LED strip (starts strictly at x=460 so it doesn't stick out left!)
       catalogCtx.fillStyle = 'rgba(255, 228, 165, 0.94)';
       catalogCtx.fillRect(460, 403, 404, 3.5);
       const backGlow = catalogCtx.createLinearGradient(0, 405, 0, 535);
@@ -612,7 +467,6 @@ document.addEventListener('DOMContentLoaded', () => {
       catalogCtx.fillStyle = backGlow;
       catalogCtx.fillRect(460, 405, 404, 130);
 
-      // Right-wall upper cabinet section 1 (x=868..936)
       catalogCtx.strokeStyle = 'rgba(255, 228, 165, 0.92)';
       catalogCtx.lineWidth = 3.5;
       catalogCtx.beginPath();
@@ -631,7 +485,6 @@ document.addEventListener('DOMContentLoaded', () => {
       catalogCtx.closePath();
       catalogCtx.fill();
 
-      // Right-wall foreground upper cabinet section 2 (x=1054..1200, skipping range hood)
       catalogCtx.beginPath();
       catalogCtx.moveTo(1054, 385);
       catalogCtx.lineTo(1200, 395);
@@ -668,17 +521,40 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       catalogCtx.restore();
     }
+  }
 
-    if (hasPullback) {
-      catalogCtx.restore();
+  function renderCatalogPreview() {
+    if (!catalogCtx || !catalogPreviewCanvas) return;
+    const W = 1200;
+    const H = 896;
+    catalogCtx.clearRect(0, 0, W, H);
+
+    if (catalogState.isBeforeMode) {
+      const beforeImg = loadCatalogImage(BASE_BEFORE_IMAGE);
+      if (beforeImg && beforeImg.complete && beforeImg.naturalWidth > 0) {
+        catalogCtx.drawImage(beforeImg, 0, 0, W, H);
+      }
+      if (catalogPreviewBadge) {
+        catalogPreviewBadge.textContent = 'آشپزخانه نمونه ایرانی — وضعیت اولیه (قبل از بازسازی)';
+      }
+      if (catalogPreviewTitle) {
+        catalogPreviewTitle.textContent = 'وضعیت اولیه آشپزخانه (پیش از بازسازی)';
+      }
+      if (catalogPreviewDesc) {
+        catalogPreviewDesc.textContent = 'کابینت ملامینه قدیمی — برای مشاهده تغییرات، گزینه‌های بازسازی را انتخاب کنید.';
+      }
+      if (catalogResetBeforeBtn) {
+        catalogResetBeforeBtn.classList.add('active');
+        catalogResetBeforeBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>بازگشت به حالت بازسازی‌شده</span>';
+      }
+      return;
     }
 
-    // 9. Right-side Coffee Bar & Foreground Island (photorealistic + dynamic color & CNC)
-    if (catalogState.extras.has('coffeebar')) {
-      drawCoffeeBarRight(catalogCtx, catalogState);
-    }
-    if (catalogState.extras.has('island')) {
-      drawKitchenIsland(catalogCtx, catalogState);
+    const useWideScene = catalogState.extras.has('island') || catalogState.extras.has('coffeebar');
+    if (useWideScene) {
+      renderWidePhotorealScene(W, H);
+    } else {
+      renderCloseupPhotorealScene(W, H);
     }
 
     const colorSummary =
