@@ -16,11 +16,11 @@
 </head>
 <body>
 
-  <!-- Dynamic Referral Discount Banner -->
+  <!-- Dynamic Referral Banner -->
   <div id="agentBanner" class="agent-banner">
     <div class="container banner-inner">
-      <i class="fa-solid fa-gift"></i>
-      <span>تبریک! شما با معرفی مشاور املاک (<strong id="agentCodeDisplay" class="ltr"></strong>) وارد شده‌اید؛ <strong>۲,۰۰۰,۰۰۰ تومان تخفیف مستقیم</strong> روی فاکتور شما فعال شد.</span>
+      <i class="fa-solid fa-handshake"></i>
+      <span>شما از طریق لینک معرفی مشاور املاک (<strong id="agentCodeDisplay" class="ltr"></strong>) وارد شده‌اید.</span>
     </div>
   </div>
 
@@ -156,16 +156,16 @@
       <div class="section-header">
         <span class="section-badge"><i class="fa-solid fa-swatchbook"></i> کاتالوگ تعاملی بازسازی نوکابین</span>
         <h2>آشپزخانه خود را بازسازی‌شده ببینید</h2>
-        <p>روی یک آشپزخانه واقعی آپارتمانی ایرانی، رنگ پلی‌اورتان، دستگیره، صفحه و نوع پرداخت را انتخاب کنید و نتیجه را فوری ببینید.</p>
+        <p>روی یک آشپزخانه نمونه، متراژ، رنگ پلی‌اورتان، ابزار CNC، دستگیره، صفحه و سرامیک را انتخاب کنید و نتیجه و قیمت نهایی را فوری ببینید.</p>
       </div>
 
       <div class="studio-shell">
         <div class="studio-grid">
-          <!-- Left/Main Preview Card: Interactive Real Iranian Kitchen Compositor Canvas -->
+          <!-- Left/Main Preview Card: Interactive Sample Kitchen Compositor Canvas -->
           <div class="studio-preview-card">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
               <div class="studio-preview-badge" id="catalogPreviewBadge">
-                آشپزخانه نمونه ایرانی — بژ کشمیری
+                آشپزخانه نمونه — وضعیت اولیه (قبل از بازسازی)
               </div>
               <button type="button" class="catalog-before-btn" id="catalogResetBeforeBtn">
                 <i class="fa-solid fa-rotate-left"></i>
@@ -194,7 +194,15 @@
               </div>
             </div>
 
-            <button type="button" class="btn btn-gold" style="width: 100%;" id="applyStudioToFormBtn">
+            <div class="catalog-total-card" id="catalogTotalPriceBox">
+              <div>
+                <div style="font-size: 0.82rem; color: #ded4c6;">برآورد قیمت نهایی بر اساس انتخاب‌های شما (<strong id="catalogTotalMeters">۱۰</strong> متر):</div>
+                <div style="font-size: 0.76rem; color: #c7b8a3;" id="catalogPriceBreakdown">رنگ یا خدمات موردنظر را انتخاب کنید</div>
+              </div>
+              <div class="total-amount" id="catalogTotalPriceValue">۰ تومان</div>
+            </div>
+
+            <button type="button" class="btn btn-gold" style="width: 100%; margin-top: 10px;" id="applyStudioToFormBtn">
               <i class="fa-solid fa-check-double"></i>
               ثبت این انتخاب برای درخواست بازدید رایگان
             </button>
@@ -202,9 +210,27 @@
 
           <!-- Right Column: Categorized Catalog Options -->
           <div id="catalogOptionsPanel">
-            <!-- Category 1: Unified Lower + Upper Cabinet Color + Optional Separate Upper Color -->
+            <!-- Step 1: Cabinet Meterage Slider -->
             <div class="studio-step-title">
               <span class="step-num">۱</span>
+              <span>متراژ کابینت‌ها</span>
+            </div>
+            <div class="palette-box" style="margin-top: 8px; margin-bottom: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label for="kitchenSizeSlider" style="font-weight: 800; font-size: 0.9rem;">متراژ تقریبی:</label>
+                <span class="tag gold" style="font-size: 0.9rem;"><strong id="sizeValueDisplay">۱۰</strong> متر طول</span>
+              </div>
+              <input type="range" id="kitchenSizeSlider" class="range-slider" min="5" max="25" value="10" step="1" />
+              <div class="range-labels">
+                <span data-pos="start">۵ متر</span>
+                <span data-pos="25">۱۰ متر</span>
+                <span data-pos="end">۲۵ متر</span>
+              </div>
+            </div>
+
+            <!-- Step 2: Unified Lower + Upper Cabinet Color + Optional Separate Upper Color -->
+            <div class="studio-step-title">
+              <span class="step-num">۲</span>
               <span>رنگ کابینت (زمینی و هوایی)</span>
             </div>
             <div class="palette-box" style="margin-top: 8px;">
@@ -275,11 +301,12 @@
                   </button>
                 </div>
               </div>
+              <div class="catalog-price-note"><i class="fa-solid fa-tag"></i> رنگ: متری ۵ میلیون تومان</div>
             </div>
 
-            <!-- Category 2: CNC Door Pattern (ایجاد ابزار CNC روی درب‌ها) -->
+            <!-- Step 3: CNC Door Pattern (ایجاد ابزار CNC روی درب‌ها) -->
             <div class="studio-step-title" style="margin-top: 14px;">
-              <span class="step-num">۲</span>
+              <span class="step-num">۳</span>
               <span>ایجاد ابزار CNC روی درب‌های قدیمی</span>
             </div>
             <div class="palette-box" style="margin-top: 8px;">
@@ -304,12 +331,13 @@
                   <span>قوس‌دار</span>
                 </button>
               </div>
+              <div class="catalog-price-note"><i class="fa-solid fa-tag"></i> ابزار: متری ۳ میلیون تومان</div>
             </div>
 
-            <!-- Category 3: Handle Color & Model (NO Hidden Handle) -->
+            <!-- Step 4: Handle Color & Model -->
             <div class="studio-step-title" style="margin-top: 14px;">
-              <span class="step-num">۳</span>
-              <span>رنگ و مدل دستگیره</span>
+              <span class="step-num">۴</span>
+              <span>تعویض دستگیره‌ها</span>
             </div>
             <div class="palette-box" style="margin-top: 8px;">
               <div class="palette-swatches" id="catalogHandlesList">
@@ -326,12 +354,13 @@
                   <span>میله‌ای طلایی</span>
                 </button>
               </div>
+              <div class="catalog-price-note"><i class="fa-solid fa-tag"></i> تعویض دستگیره‌ها: بین ۶ تا ۱۵ میلیون تومان</div>
             </div>
 
-            <!-- Category 4: Countertop Type (Light Marble / Dark Marble) -->
+            <!-- Step 5: Countertop Color Change -->
             <div class="studio-step-title" style="margin-top: 14px;">
-              <span class="step-num">۴</span>
-              <span>نوع صفحه کابینت</span>
+              <span class="step-num">۵</span>
+              <span>تغییر رنگ صفحه کابینت</span>
             </div>
             <div class="palette-box" style="margin-top: 8px;">
               <div class="palette-swatches" id="catalogCountertopsList">
@@ -348,11 +377,12 @@
                   <span>سنگ مشکی تیره با رگه‌های سفید</span>
                 </button>
               </div>
+              <div class="catalog-price-note"><i class="fa-solid fa-tag"></i> رنگ صفحه کابینت: ۲۰ میلیون تومان</div>
             </div>
 
-            <!-- Category 5: Backsplash Ceramic Tile -->
+            <!-- Step 6: Backsplash Ceramic Tile -->
             <div class="studio-step-title" style="margin-top: 14px;">
-              <span class="step-num">۵</span>
+              <span class="step-num">۶</span>
               <span>تغییر سرامیک بین کابینتی</span>
             </div>
             <div class="palette-box" style="margin-top: 8px;">
@@ -366,11 +396,12 @@
                   <span>سرامیک مترویی سفید پخ‌دار</span>
                 </button>
               </div>
+              <div class="catalog-price-note"><i class="fa-solid fa-tag"></i> تغییر سرامیک بین کابینتی: ۱۵ میلیون تومان</div>
             </div>
 
-            <!-- Category 6: Gloss Level (Matte / Glossy) & Addons (Island, Coffee Bar, Hidden Lighting) -->
+            <!-- Step 7: Gloss Level & Addons (Island, Coffee Bar, Hidden Lighting) -->
             <div class="studio-step-title" style="margin-top: 14px;">
-              <span class="step-num">۶</span>
+              <span class="step-num">۷</span>
               <span>براقیت رنگ و امکانات اضافه</span>
             </div>
             <div class="palette-box" style="margin-top: 8px;">
@@ -388,7 +419,7 @@
               <div class="palette-swatches" id="catalogExtrasList" style="padding-top: 10px; border-top: 1px dashed var(--border-medium);">
                 <button type="button" class="palette-chip extra-chip" data-extra-id="island" data-title="ساخت جزیره">
                   <i class="fa-solid fa-table-columns"></i>
-                  <span>ساخت جزیره</span>
+                  <span>ساخت جزیره (۹۰ × ۱.۵ متر)</span>
                 </button>
                 <button type="button" class="palette-chip extra-chip" data-extra-id="coffeebar" data-title="ساخت کافی‌بار">
                   <i class="fa-solid fa-mug-hot"></i>
@@ -399,77 +430,11 @@
                   <span>نور مخفی</span>
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 3. Online Cost Estimator Section -->
-  <section class="section section-alt" id="estimator">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-badge"><i class="fa-solid fa-calculator"></i> محاسبه هزینه</span>
-        <h2>تخمین آنلاین هزینه در ۳۰ ثانیه</h2>
-        <p>مقایسه هزینه بازسازی با رنگ پلی‌اورتان در برابر تعویض کامل (۱ به ۱۰).</p>
-      </div>
-
-      <div class="estimator-card">
-        <div class="estimator-grid">
-          <div>
-            <div style="margin-bottom: 22px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <label for="kitchenSizeSlider" style="font-weight: 800;">۱. متراژ تقریبی:</label>
-                <span class="tag gold" style="font-size: 0.92rem;"><strong id="sizeValueDisplay">۱۰</strong> متر طول</span>
-              </div>
-              <input type="range" id="kitchenSizeSlider" class="range-slider" min="5" max="25" value="10" step="1" />
-              <div class="range-labels">
-                <span>۵ متر</span>
-                <span>۱۰ متر</span>
-                <span>۲۵ متر</span>
+              <div class="catalog-price-note" style="flex-wrap: wrap; gap: 12px;">
+                <span><i class="fa-solid fa-tag"></i> ساخت جزیره ۹۰ × ۱.۵ متر: ۱۵۰ میلیون تومان</span>
+                <span><i class="fa-solid fa-tag"></i> ساخت کافی‌بار: ۱۱۰ میلیون تومان</span>
               </div>
             </div>
-
-            <div>
-              <label style="font-weight: 800; display: block; margin-bottom: 8px;">۲. نوع کابینت فعلی:</label>
-              <div class="condition-cards" id="conditionCards">
-                <div class="cond-card active" data-mult="1" data-label="MDF یا چوب سالم">
-                  <i class="fa-solid fa-door-closed"></i>
-                  <strong>MDF / چوب</strong>
-                  <small>رنگ‌رفتگی یا قدیمی</small>
-                </div>
-                <div class="cond-card" data-mult="1.12" data-label="وکیوم / ممبران">
-                  <i class="fa-solid fa-layer-group"></i>
-                  <strong>وکیوم / ممبران</strong>
-                  <small>کندن روکش و زیرسازی</small>
-                </div>
-                <div class="cond-card" data-mult="1.18" data-label="کلاسیک / پرکار">
-                  <i class="fa-solid fa-brush"></i>
-                  <strong>کلاسیک / پرکار</strong>
-                  <small>زیرسازی و بتونه ابزار</small>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="estimate-result-box">
-            <div style="font-size: 0.82rem; color: #d8cebe;">هزینه تعویض کامل:</div>
-            <div style="font-size: 1.08rem; text-decoration: line-through; color: #f09289; font-weight: 700;" id="replaceCostDisplay">
-              ۷۰۰ میلیون تومان
-            </div>
-
-            <div style="font-size: 0.88rem; color: #fff; margin-top: 10px;">بازسازی با نوکابین (تحویل ۱۵ روزه):</div>
-            <div class="est-price-main" id="renovateCostDisplay">۷۰ میلیون تومان</div>
-
-            <div class="est-savings-pill">
-              <i class="fa-solid fa-piggy-bank"></i>
-              <span>صرفه‌جویی: <strong id="savingsDisplay">۶۳۰ میلیون تومان</strong></span>
-            </div>
-
-            <button type="button" class="btn btn-gold" style="width: 100%; margin-top: 16px;" id="lockEstimateBtn">
-              ثبت برآورد و بازدید رایگان
-            </button>
           </div>
         </div>
       </div>
@@ -556,7 +521,7 @@
               <select id="inspCabinetType" name="cabinetType">
                 <option value="ام‌دی‌اف / چوب (سکونت شخصی)">ام‌دی‌اف / چوب</option>
                 <option value="وکیوم / ممبران (نوسازی کامل)">وکیوم / ممبران</option>
-                <option value="بازسازی جهت فروش یا اجاره سریع‌تر ملک">بازسازی برای فروش/اجاره</option>
+                <option value="پلی اورتان">پلی اورتان</option>
               </select>
             </div>
 
@@ -566,7 +531,7 @@
             </div>
 
             <div class="field">
-              <label for="inspReferrerPhone">شماره مشاور معرف (۲ میلیون تومان تخفیف)</label>
+              <label for="inspReferrerPhone">شماره مشاور معرف (اختیاری)</label>
               <input
                 type="tel"
                 id="inspReferrerPhone"
@@ -587,7 +552,7 @@
             </div>
 
             <div class="field full">
-              <label>آپلود عکس آشپزخانه (حداکثر ۳ عکس)</label>
+              <label>آپلود عکس آشپزخانه (اختیاری — حداکثر ۳ عکس)</label>
               <label class="upload-dropzone" for="inspPhotos">
                 <input
                   type="file"
@@ -599,7 +564,7 @@
                 />
                 <div style="font-weight: 800; font-size: 0.95rem;">
                   <i class="fa-solid fa-cloud-arrow-up" style="color: var(--accent-gold);"></i>
-                  انتخاب عکس‌های کابینت (حداکثر ۳ تصویر)
+                  انتخاب عکس‌های کابینت (اختیاری — حداکثر ۳ تصویر)
                 </div>
               </label>
               <div id="inspPhotoPreview" class="preview-grid"></div>
@@ -633,22 +598,23 @@
               <i class="fa-solid fa-handshake"></i> ویژه مشاورین املاک تهران
             </span>
 
-            <h2 style="font-size: clamp(1.35rem, 2.5vw, 1.95rem); font-weight: 900; margin-bottom: 12px; line-height: 1.4; color: #fff;">
-              مشاور املاک محترم، فایلهایی که کابینت های قدیمی دارند را به درآمد تبدیل کن!
+            <h2 style="font-size: clamp(1.35rem, 2.5vw, 1.95rem); font-weight: 900; margin-bottom: 12px; line-height: 1.45; color: #fff;">
+              دعوت به همکاری با مشاورین املاک<br />
+              خانه‌هایی که کابینت قدیمی دارند را به درآمد تبدیل کنید.
             </h2>
 
             <p style="color: #ded4c6; margin-bottom: 16px; line-height: 1.75;" class="hide-sm">
-              با معرفی بازسازی ۱۵ روزه نوکابین (۷۰ میلیون به‌جای ۷۰۰ میلیون تعویض)، فایل‌های قدیمی را سریع‌تر بفروشید و پورسانت نقدی بگیرید:
+              با معرفی بازسازی ۱۵ روزه نوکابین (۷۰ میلیون به‌جای ۷۰۰ میلیون تعویض)، فایل‌های قدیمی را سریع‌تر بفروشید و درآمد نقدی بگیرید:
             </p>
 
             <div class="commission-boxes">
               <div class="comm-box">
                 <span class="comm-amount">۵۰۰,۰۰۰ تومان بابت هر بازدید</span>
-                <p>با انجام بازدید کارشناس، حتی بدون عقد قرارداد پرداخت می‌شود.</p>
+                <p>با درخواست مالک برای انجام بازدید کارشناس، حتی بدون عقد قرارداد پرداخت می‌شود.</p>
               </div>
               <div class="comm-box">
-                <span class="comm-amount">۵٪ پورسانت + ۲ میلیون تخفیف</span>
-                <p>۵٪ پورسانت قرارداد برای شما و ۲ میلیون تخفیف برای مالک.</p>
+                <span class="comm-amount">۳ میلیون تومان بابت هر قرارداد</span>
+                <p>۳ میلیون تومان پورسانت نقدی بابت هر قرارداد معرفی‌شده برای شما.</p>
               </div>
             </div>
 
@@ -679,7 +645,7 @@
                 </div>
 
                 <div class="field">
-                  <label for="agentPhone">شماره همراه (کد معرف) *</label>
+                  <label for="agentPhone">شماره همراه *</label>
                   <input type="tel" id="agentPhone" name="phone" class="ltr" required placeholder="09121112233" />
                 </div>
 

@@ -288,14 +288,14 @@ document.addEventListener('DOMContentLoaded', () => {
           <div>
             <h2 style="font-size: 1.15rem; font-weight: 900; margin-bottom: 6px;">لینک دعوت و شماره معرف اختصاصی شما</h2>
             <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 10px;">
-              هر مالکی که با این لینک ثبت‌نام کند یا شماره همراه <strong class="ltr">${escapeHtml(agent.phone)}</strong> را به عنوان «شماره همراه مشاور املاک معرفی‌کننده» وارد کند، <strong>۲ میلیون تومان تخفیف</strong> می‌گیرد و پورسانت آن به حساب شما ثبت می‌شود.
+              هر مالکی که با این لینک ثبت‌نام کند یا شماره همراه <strong class="ltr">${escapeHtml(agent.phone)}</strong> را به عنوان «شماره مشاور معرف» وارد کند، معرفی آن در حساب شما ثبت می‌شود.
             </p>
             <div class="ltr" style="background: #fff; border: 1px solid var(--border-medium); padding: 10px 14px; border-radius: var(--radius-sm); word-break: break-all; font-weight: 700; margin-bottom: 10px;">
               ${escapeHtml(refUrl)}
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
               <button type="button" class="btn btn-primary btn-sm" id="copyAgentLink">کپی لینک دعوت</button>
-              <a class="btn btn-whatsapp btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`بازسازی کابینت بدون تعویض با یک‌دهم هزینه در ۱۵ روز (با ۲ میلیون تومان تخفیف معرف): ${refUrl}`)}">ارسال در واتس‌اپ</a>
+              <a class="btn btn-whatsapp btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`بازسازی کابینت بدون تعویض با یک‌دهم هزینه در ۱۵ روز: ${refUrl}`)}">ارسال در واتس‌اپ</a>
             </div>
           </div>
 

@@ -42,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const catalogUpperMatchDot = document.getElementById('catalogUpperMatchDot');
   const applyStudioToFormBtn = document.getElementById('applyStudioToFormBtn');
   const inspNotes = document.getElementById('inspNotes');
+  const kitchenSizeSlider = document.getElementById('kitchenSizeSlider');
+  const sizeValueDisplay = document.getElementById('sizeValueDisplay');
+  const catalogTotalMeters = document.getElementById('catalogTotalMeters');
+  const catalogTotalPriceValue = document.getElementById('catalogTotalPriceValue');
+  const catalogPriceBreakdown = document.getElementById('catalogPriceBreakdown');
 
   const BASE_BEFORE_IMAGE = '/uploads/sample-kitchen/base/iranian_kitchen_before.jpg';
   const OVERLAY_URLS = {
@@ -191,6 +196,84 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Bilinear perspective CNC groove renderer for right-wall angled cabinets (tl, tr, br, bl = [x, y])
+  function drawPerspectiveCncQuad(ctx, tl, tr, br, bl, pattern) {
+    if (pattern === 'none') return;
+    const pt = (u, v) => [
+      (1 - u) * (1 - v) * tl[0] + u * (1 - v) * tr[0] + u * v * br[0] + (1 - u) * v * bl[0],
+      (1 - u) * (1 - v) * tl[1] + u * (1 - v) * tr[1] + u * v * br[1] + (1 - u) * v * bl[1],
+    ];
+    const strokeQuad = (u0, v0, u1, v1) => {
+      const p0 = pt(u0, v0), p1 = pt(u1, v0), p2 = pt(u1, v1), p3 = pt(u0, v1);
+      ctx.save();
+      ctx.lineWidth = 1.7;
+      ctx.strokeStyle = 'rgba(18, 16, 14, 0.28)';
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.lineTo(p3[0], p3[1]);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.24)';
+      ctx.beginPath();
+      ctx.moveTo(p0[0] + 1.2, p0[1] + 1.2);
+      ctx.lineTo(p1[0] + 1.2, p1[1] + 1.2);
+      ctx.lineTo(p2[0] + 1.2, p2[1] + 1.2);
+      ctx.lineTo(p3[0] + 1.2, p3[1] + 1.2);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    if (pattern === 'shaker') {
+      strokeQuad(0.14, 0.10, 0.86, 0.90);
+    } else if (pattern === 'beveled') {
+      strokeQuad(0.11, 0.08, 0.89, 0.92);
+      strokeQuad(0.20, 0.14, 0.80, 0.86);
+    } else if (pattern === 'fluted') {
+      strokeQuad(0.11, 0.08, 0.89, 0.92);
+      ctx.save();
+      for (let u = 0.20; u < 0.86; u += 0.11) {
+        const a = pt(u, 0.10), b = pt(u, 0.90);
+        ctx.strokeStyle = 'rgba(18, 16, 14, 0.20)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]);
+        ctx.lineTo(b[0], b[1]);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.beginPath();
+        ctx.moveTo(a[0] + 1.2, a[1]);
+        ctx.lineTo(b[0] + 1.2, b[1]);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (pattern === 'arch') {
+      const p0 = pt(0.14, 0.90), p1 = pt(0.14, 0.28), pMid = pt(0.50, 0.06), p2 = pt(0.86, 0.28), p3 = pt(0.86, 0.90);
+      ctx.save();
+      const trace = (ox, oy) => {
+        ctx.beginPath();
+        ctx.moveTo(p0[0] + ox, p0[1] + oy);
+        ctx.lineTo(p1[0] + ox, p1[1] + oy);
+        ctx.quadraticCurveTo(pMid[0] + ox, pMid[1] + oy, p2[0] + ox, p2[1] + oy);
+        ctx.lineTo(p3[0] + ox, p3[1] + oy);
+        ctx.closePath();
+      };
+      ctx.lineWidth = 1.7;
+      ctx.strokeStyle = 'rgba(18, 16, 14, 0.28)';
+      trace(0, 0);
+      ctx.stroke();
+      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.24)';
+      trace(1.2, 1.2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   function drawMetallicBarHandle(ctx, x, y, w, h, handleId) {
     if (handleId === 'silver') return;
     ctx.save();
@@ -252,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ctImg && ctImg.complete && ctImg.naturalWidth > 0) catalogCtx.drawImage(ctImg, 0, 0, W, H);
     }
 
-    // 5. CNC door grooves on wide main kitchen doors
+    // 5. CNC door grooves on wide main kitchen doors (back wall + right-wall perspective doors)
     if (catalogState.cncId !== 'none') {
       const wideMainDoors = [
         [480, 264, 82, 135],
@@ -264,6 +347,18 @@ document.addEventListener('DOMContentLoaded', () => {
         [658, 524, 90, 142],
       ];
       wideMainDoors.forEach(([dx, dy, dw, dh]) => drawCncDoorGrooves(catalogCtx, dx, dy, dw, dh, catalogState.cncId));
+
+      // Right-wall upper & lower perspective doors
+      drawPerspectiveCncQuad(catalogCtx, [804, 224], [835, 202], [835, 396], [804, 400], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [758, 527], [805, 552], [805, 718], [758, 680], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [808, 554], [860, 583], [860, 758], [808, 720], catalogState.cncId);
+      if (!hasCoffeeBar) {
+        drawPerspectiveCncQuad(catalogCtx, [896, 162], [952, 128], [952, 376], [896, 386], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [956, 126], [1032, 125], [1032, 368], [956, 375], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [866, 588], [936, 626], [936, 682], [866, 642], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [866, 646], [936, 686], [936, 746], [866, 704], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [866, 708], [936, 750], [936, 814], [866, 768], catalogState.cncId);
+      }
     }
 
     // 6. Main wide handles recolor (exact measured silver handle bounds)
@@ -442,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (hImg && hImg.complete && hImg.naturalWidth > 0) catalogCtx.drawImage(hImg, 0, 0, W, H);
     }
 
-    // 6. CNC door pattern grooves
+    // 6. CNC door pattern grooves (back wall + right-wall perspective doors & drawers)
     if (catalogState.cncId !== 'none') {
       const doorBoxes = [
         [462, 227, 94, 175],
@@ -454,6 +549,19 @@ document.addEventListener('DOMContentLoaded', () => {
         [687, 562, 117, 180],
       ];
       doorBoxes.forEach(([dx, dy, dw, dh]) => drawCncDoorGrooves(catalogCtx, dx, dy, dw, dh, catalogState.cncId));
+
+      // Right-wall upper doors (left and right of hood)
+      drawPerspectiveCncQuad(catalogCtx, [874, 154], [916, 118], [916, 392], [874, 398], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [919, 115], [954, 86], [954, 386], [919, 391], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [1058, 12], [1138, 0], [1138, 378], [1058, 375], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [1142, 0], [1198, 0], [1198, 382], [1142, 379], catalogState.cncId);
+
+      // Right-wall lower doors & 3 drawers
+      drawPerspectiveCncQuad(catalogCtx, [816, 558], [854, 580], [854, 780], [816, 745], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [857, 582], [922, 620], [922, 835], [857, 782], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [928, 624], [1054, 696], [1054, 754], [928, 680], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [928, 684], [1054, 758], [1054, 822], [928, 744], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [928, 748], [1054, 826], [1054, 886], [928, 808], catalogState.cncId);
     }
 
     // 7. Hidden LED under-cabinet lighting (exact back-wall x=460..864 + right-wall upper cabinets)
@@ -535,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         catalogCtx.drawImage(beforeImg, 0, 0, W, H);
       }
       if (catalogPreviewBadge) {
-        catalogPreviewBadge.textContent = 'آشپزخانه نمونه ایرانی — وضعیت اولیه (قبل از بازسازی)';
+        catalogPreviewBadge.textContent = 'آشپزخانه نمونه — وضعیت اولیه (قبل از بازسازی)';
       }
       if (catalogPreviewTitle) {
         catalogPreviewTitle.textContent = 'وضعیت اولیه آشپزخانه (پیش از بازسازی)';
@@ -547,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
         catalogResetBeforeBtn.classList.add('active');
         catalogResetBeforeBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i><span>بازگشت به حالت بازسازی‌شده</span>';
       }
+      if (typeof updateCatalogPricing === 'function') updateCatalogPricing();
       return;
     }
 
@@ -567,7 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (catalogState.extras.has('lighting')) extrasNames.push('نور مخفی');
 
     if (catalogPreviewBadge) {
-      catalogPreviewBadge.textContent = `آشپزخانه نمونه ایرانی — ${colorSummary}`;
+      catalogPreviewBadge.textContent = `آشپزخانه نمونه — ${colorSummary}`;
     }
     if (catalogPreviewTitle) {
       catalogPreviewTitle.textContent = `${colorSummary} — رنگ پلی‌اورتان`;
@@ -589,6 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
       catalogResetBeforeBtn.classList.remove('active');
       catalogResetBeforeBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i><span>بازگشت به تصویر اولیه</span>';
     }
+    if (typeof updateCatalogPricing === 'function') updateCatalogPricing();
   }
 
   document.querySelectorAll('#catalogColorsList .catalog-color-chip').forEach((chip) => {
@@ -709,6 +819,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (applyStudioToFormBtn) {
     applyStudioToFormBtn.addEventListener('click', () => {
+      const meters = kitchenSizeSlider ? Number(kitchenSizeSlider.value) || 10 : 10;
+      const inspMeters = document.getElementById('inspMeters');
+      if (inspMeters) inspMeters.value = meters;
       if (inspNotes) {
         const colorText =
           catalogState.upperId === 'match'
@@ -719,71 +832,84 @@ document.addEventListener('DOMContentLoaded', () => {
         if (catalogState.extras.has('coffeebar')) extrasList.push('ساخت کافی‌بار');
         if (catalogState.extras.has('lighting')) extrasList.push('نور مخفی');
         const extrasText = extrasList.length ? ` | امکانات: ${extrasList.join('، ')}` : '';
-        inspNotes.value = `انتخاب از کاتالوگ نوکابین: رنگ ${colorText} | ابزار CNC: ${catalogState.cncTitle} | ${catalogState.handleTitle} | ${catalogState.countertopTitle} | ${catalogState.backsplashTitle} | براقیت: ${catalogState.finishLabel}${extrasText}`;
+        const priceText = catalogTotalPriceValue ? ` | برآورد قیمت: ${catalogTotalPriceValue.textContent}` : '';
+        inspNotes.value = `انتخاب از کاتالوگ نوکابین (${toPersianDigits(meters)} متر): رنگ ${colorText} | ابزار CNC: ${catalogState.cncTitle} | ${catalogState.handleTitle} | ${catalogState.countertopTitle} | ${catalogState.backsplashTitle} | براقیت: ${catalogState.finishLabel}${extrasText}${priceText}`;
       }
       const inspectionSection = document.getElementById('inspection');
       if (inspectionSection) {
         inspectionSection.scrollIntoView({ behavior: 'smooth' });
       }
-      showToast('ترکیب انتخابی شما به فرم درخواست بازدید رایگان منتقل شد.', 'success');
+      showToast('ترکیب و برآورد قیمت شما به فرم درخواست بازدید رایگان منتقل شد.', 'success');
     });
   }
 
-  // 4. Online Cost Estimator (1/10 ratio: 10m -> 70M vs 700M)
-  const kitchenSizeSlider = document.getElementById('kitchenSizeSlider');
-  const sizeValueDisplay = document.getElementById('sizeValueDisplay');
-  const replaceCostDisplay = document.getElementById('replaceCostDisplay');
-  const renovateCostDisplay = document.getElementById('renovateCostDisplay');
-  const savingsDisplay = document.getElementById('savingsDisplay');
-  const conditionCards = document.querySelectorAll('#conditionCards .cond-card');
-  const lockEstimateBtn = document.getElementById('lockEstimateBtn');
-
-  let currentCondMultiplier = 1;
-  let currentCondLabel = 'MDF یا چوب سالم';
-
-  function updateEstimator() {
-    if (!kitchenSizeSlider) return;
-    const meters = Number(kitchenSizeSlider.value) || 10;
-    const baseRenoMillions = Math.round(meters * 7 * currentCondMultiplier);
-    const replaceMillions = baseRenoMillions * 10; // Strict 1/10 ratio
-    const savedMillions = replaceMillions - baseRenoMillions;
-
+  // 4. Integrated Catalog Meterage & Live Price Calculator
+  function updateCatalogPricing() {
+    const meters = kitchenSizeSlider ? Number(kitchenSizeSlider.value) || 10 : 10;
     if (sizeValueDisplay) sizeValueDisplay.textContent = toPersianDigits(meters);
-    if (renovateCostDisplay) renovateCostDisplay.textContent = `${toPersianDigits(baseRenoMillions)} میلیون تومان`;
-    if (replaceCostDisplay) replaceCostDisplay.textContent = `${toPersianDigits(replaceMillions)} میلیون تومان`;
-    if (savingsDisplay) savingsDisplay.textContent = `${toPersianDigits(savedMillions)} میلیون تومان`;
+    if (catalogTotalMeters) catalogTotalMeters.textContent = toPersianDigits(meters);
+
+    let minTotal = 0;
+    let maxTotal = 0;
+    const items = [];
+
+    if (!catalogState.isBeforeMode) {
+      if (catalogState.lowerId !== 'before') {
+        const paintCost = meters * 5;
+        minTotal += paintCost;
+        maxTotal += paintCost;
+        items.push(`رنگ (${toPersianDigits(paintCost)}م)`);
+      }
+      if (catalogState.cncId !== 'none') {
+        const cncCost = meters * 3;
+        minTotal += cncCost;
+        maxTotal += cncCost;
+        items.push(`ابزار (${toPersianDigits(cncCost)}م)`);
+      }
+      if (catalogState.handleId !== 'silver') {
+        minTotal += 6;
+        maxTotal += 15;
+        items.push('دستگیره (۶ تا ۱۵م)');
+      }
+      if (catalogState.countertopId !== 'standard') {
+        minTotal += 20;
+        maxTotal += 20;
+        items.push('صفحه (۲۰م)');
+      }
+      if (catalogState.backsplashId !== 'standard') {
+        minTotal += 15;
+        maxTotal += 15;
+        items.push('سرامیک (۱۵م)');
+      }
+      if (catalogState.extras.has('island')) {
+        minTotal += 150;
+        maxTotal += 150;
+        items.push('جزیره (۱۵۰م)');
+      }
+      if (catalogState.extras.has('coffeebar')) {
+        minTotal += 110;
+        maxTotal += 110;
+        items.push('کافی‌بار (۱۱۰م)');
+      }
+    }
+
+    if (catalogTotalPriceValue) {
+      if (minTotal === 0 && maxTotal === 0) {
+        catalogTotalPriceValue.textContent = '۰ تومان';
+      } else if (minTotal === maxTotal) {
+        catalogTotalPriceValue.textContent = `${toPersianDigits(minTotal)} میلیون تومان`;
+      } else {
+        catalogTotalPriceValue.textContent = `${toPersianDigits(minTotal)} تا ${toPersianDigits(maxTotal)} میلیون تومان`;
+      }
+    }
+    if (catalogPriceBreakdown) {
+      catalogPriceBreakdown.textContent = items.length ? items.join(' + ') : 'رنگ یا خدمات موردنظر را انتخاب کنید';
+    }
   }
 
   if (kitchenSizeSlider) {
-    kitchenSizeSlider.addEventListener('input', updateEstimator);
-    updateEstimator();
-  }
-
-  conditionCards.forEach((card) => {
-    card.addEventListener('click', () => {
-      conditionCards.forEach((c) => c.classList.remove('active'));
-      card.classList.add('active');
-      currentCondMultiplier = Number(card.dataset.mult) || 1;
-      currentCondLabel = card.dataset.label || 'MDF یا چوب سالم';
-      updateEstimator();
-    });
-  });
-
-  if (lockEstimateBtn) {
-    lockEstimateBtn.addEventListener('click', () => {
-      const meters = kitchenSizeSlider ? kitchenSizeSlider.value : 10;
-      const inspMeters = document.getElementById('inspMeters');
-      if (inspMeters) inspMeters.value = meters;
-      if (inspNotes) {
-        const estNote = `برآورد آنلاین: متراژ ${toPersianDigits(meters)} متر (${currentCondLabel}) — برآورد نوکابین: ${renovateCostDisplay ? renovateCostDisplay.textContent : ''}`;
-        inspNotes.value = inspNotes.value ? `${inspNotes.value}\n${estNote}` : estNote;
-      }
-      const inspectionSection = document.getElementById('inspection');
-      if (inspectionSection) {
-        inspectionSection.scrollIntoView({ behavior: 'smooth' });
-      }
-      showToast('متراژ و برآورد شما به فرم درخواست بازدید منتقل شد.', 'success');
-    });
+    kitchenSizeSlider.addEventListener('input', updateCatalogPricing);
+    updateCatalogPricing();
   }
 
   // 5. Inspection Form Photo Upload (Strictly Max 3 Photos)
@@ -935,7 +1061,7 @@ document.addEventListener('DOMContentLoaded', () => {
           agentApplyResult.style.display = 'block';
           agentApplyResult.innerHTML = `
             <div><strong>${escapeHtml(data.message)}</strong></div>
-            <div style="margin-top: 8px; font-size: 0.85rem;">لینک دعوت اختصاصی شما (با ۲ میلیون تومان تخفیف برای مشتری):</div>
+            <div style="margin-top: 8px; font-size: 0.85rem;">لینک دعوت اختصاصی شما:</div>
             <div class="ltr" style="background: #fff; padding: 8px 10px; border-radius: 8px; margin: 6px 0; word-break: break-all; border: 1px solid var(--border-medium); font-weight: 700;">
               ${escapeHtml(refUrl)}
             </div>
