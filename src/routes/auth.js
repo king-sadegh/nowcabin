@@ -42,7 +42,11 @@ const MELIPAYAMAK_ERROR_MESSAGES = {
 };
 
 async function sendMelipayamakOtp(phone, code) {
-  const username = String(config.MELIPAYAMAK_USERNAME || '09225603574').trim();
+  const rawUser = String(config.MELIPAYAMAK_USERNAME || '09225603574').trim();
+  const userWithoutZero = rawUser.startsWith('0') ? rawUser.slice(1) : rawUser;
+  const userWithZero = rawUser.startsWith('0') ? rawUser : `0${rawUser}`;
+  const usernameCandidates = [...new Set([rawUser, userWithZero, userWithoutZero])];
+
   const password = String(config.MELIPAYAMAK_PASSWORD || config.MELIPAYAMAK_TOKEN || '80c521ed-98e2-49e9-97f9-869c2af8c27c').trim();
   const bodyId = Number(config.MELIPAYAMAK_OTP_BODY_ID) || 595982;
 
@@ -50,33 +54,65 @@ async function sendMelipayamakOtp(phone, code) {
   let restText = '';
   let restData = null;
 
-  try {
-    const resp = await fetch(restUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
-      body: JSON.stringify({
+  for (const username of usernameCandidates) {
+    try {
+      const resp = await fetch(restUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({
+          username,
+          password,
+          text: String(code),
+          to: phone,
+          bodyId,
+        }),
+      });
+      restText = await resp.text();
+      try {
+        restData = JSON.parse(restText);
+      } catch {}
+
+      const valStr = restData && restData.Value !== undefined ? String(restData.Value).trim() : '';
+      if (resp.ok && restData && Number(restData.RetStatus) === 1 && (valStr.length > 3 || Number(valStr) > 100)) {
+        return restData;
+      }
+      console.error(`[Melipayamak BaseServiceNumber (user=${username}) Error] HTTP ${resp.status} | Response: ${restText}`);
+      // If error is not auth/0, don't retry other username format
+      if (valStr && valStr !== '0') break;
+    } catch (restErr) {
+      console.error(`[Melipayamak BaseServiceNumber (user=${username}) Exception]`, restErr?.message || restErr);
+    }
+  }
+
+  // Fallback 1: HTTP POST form-urlencoded to api.payamak-panel.com/post/Send.asmx/SendByBaseNumber2
+  for (const username of usernameCandidates) {
+    try {
+      const formBody = new URLSearchParams({
         username,
         password,
         text: String(code),
         to: phone,
-        bodyId,
-      }),
-    });
-    restText = await resp.text();
-    try {
-      restData = JSON.parse(restText);
-    } catch {}
-
-    const valStr = restData && restData.Value !== undefined ? String(restData.Value).trim() : '';
-    if (resp.ok && restData && Number(restData.RetStatus) === 1 && (valStr.length > 3 || Number(valStr) > 100)) {
-      return restData;
+        bodyId: String(bodyId),
+      });
+      const asmxResp = await fetch('http://api.payamak-panel.com/post/Send.asmx/SendByBaseNumber2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8' },
+        body: formBody.toString(),
+      });
+      const asmxText = await asmxResp.text();
+      const match = asmxText.match(/<string[^>]*>([^<]+)<\/string>/i);
+      const asmxVal = match ? match[1].trim() : '';
+      if (asmxResp.ok && asmxVal && (asmxVal.length > 3 || Number(asmxVal) > 100)) {
+        return { Value: asmxVal, RetStatus: 1, StrRetStatus: 'Ok' };
+      }
+      console.error(`[Melipayamak ASMX SendByBaseNumber2 (user=${username})] HTTP ${asmxResp.status} | Val: ${asmxVal || asmxText.slice(0, 120)}`);
+      if (asmxVal && asmxVal !== '0') break;
+    } catch (asmxErr) {
+      console.error('[Melipayamak ASMX Exception]', asmxErr?.message || asmxErr);
     }
-    console.error(`[Melipayamak BaseServiceNumber Error] HTTP ${resp.status} | Response: ${restText}`);
-  } catch (restErr) {
-    console.error('[Melipayamak BaseServiceNumber Exception]', restErr?.message || restErr);
   }
 
-  // Fallback 1: console.melipayamak.com shared pattern endpoint (token without hyphens)
+  // Fallback 2: console.melipayamak.com shared pattern endpoint
   const cleanToken = password.replace(/-/g, '') || '80c521ed98e249e997f9869c2af8c27c';
   for (const tokenCandidate of [cleanToken, password]) {
     try {
@@ -99,7 +135,7 @@ async function sendMelipayamakOtp(phone, code) {
       if (fbResp.ok && fbData && fbData.recId) {
         return fbData;
       }
-      if (fbResp.ok && fbData && !fbData.status && !/error|fail|invalid|مشترک|غیرفعال|اشتباه/i.test(fbText)) {
+      if (fbResp.ok && fbData && !fbData.status && !/error|fail|invalid|مشترک|غیرفعال|اشتباه|معتبر/i.test(fbText)) {
         return fbData;
       }
       console.error(`[Melipayamak Console Fallback (${tokenCandidate.slice(0, 8)}...)] HTTP ${fbResp.status} | Response: ${fbText}`);
