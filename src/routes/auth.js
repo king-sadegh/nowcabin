@@ -17,32 +17,65 @@ function getUserPhotoQuota(userId) {
 }
 
 async function sendMelipayamakOtp(phone, code) {
-  const token = String(config.MELIPAYAMAK_TOKEN || '').trim();
-  if (!token) {
-    throw new Error('MELIPAYAMAK_TOKEN is not configured');
+  const username = String(config.MELIPAYAMAK_USERNAME || '09225603574').trim();
+  const password = String(config.MELIPAYAMAK_PASSWORD || config.MELIPAYAMAK_TOKEN || '80c521ed-98e2-49e9-97f9-869c2af8c27c').trim();
+  const bodyId = Number(config.MELIPAYAMAK_OTP_BODY_ID) || 595982;
+
+  const restUrl = 'https://rest.payamak-panel.com/api/SendSMS/BaseServiceNumber';
+  let restText = '';
+  let restData = null;
+
+  try {
+    const resp = await fetch(restUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username,
+        password,
+        text: String(code),
+        to: phone,
+        bodyId,
+      }),
+    });
+    restText = await resp.text();
+    try {
+      restData = JSON.parse(restText);
+    } catch {}
+
+    if (resp.ok && restData && Number(restData.RetStatus) === 1) {
+      return restData;
+    }
+    console.error(`[Melipayamak BaseServiceNumber Error] HTTP ${resp.status} | Response: ${restText}`);
+  } catch (restErr) {
+    console.error('[Melipayamak BaseServiceNumber Exception]', restErr?.message || restErr);
   }
-  const url = `https://console.melipayamak.com/api/send/shared/${encodeURIComponent(token)}`;
-  const resp = await fetch(url, {
+
+  // Fallback to console.melipayamak.com shared pattern endpoint (token without hyphens)
+  const cleanToken = password.replace(/-/g, '') || '80c521ed98e249e997f9869c2af8c27c';
+  const fallbackUrl = `https://console.melipayamak.com/api/send/shared/${encodeURIComponent(cleanToken)}`;
+  const fbResp = await fetch(fallbackUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      bodyId: Number(config.MELIPAYAMAK_OTP_BODY_ID) || 595982,
+      bodyId,
       to: phone,
       args: [String(code)],
     }),
   });
-  const text = await resp.text();
-  let data = null;
+  const fbText = await fbResp.text();
+  let fbData = null;
   try {
-    data = JSON.parse(text);
+    fbData = JSON.parse(fbText);
   } catch {}
-  if (!resp.ok) {
-    throw new Error(`Melipayamak HTTP ${resp.status}: ${text}`);
+
+  if (!fbResp.ok || (fbData && fbData.status && /error|fail|invalid|مشترک|غیرفعال/i.test(String(fbData.status)))) {
+    console.error(
+      `[Melipayamak Fallback Error] HTTP ${fbResp.status} | Fallback Response: ${fbText} | Primary Response: ${restText}`
+    );
+    throw new Error(`Melipayamak OTP failed (Primary: ${restText || 'N/A'} | Fallback HTTP ${fbResp.status}: ${fbText})`);
   }
-  if (data && data.status && /error|fail|invalid/i.test(String(data.status))) {
-    throw new Error(`Melipayamak error: ${text}`);
-  }
-  return data || { ok: true };
+
+  return fbData || { ok: true };
 }
 
 router.post('/request-otp', async (req, res) => {

@@ -26,6 +26,8 @@ module.exports = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   APP_SECRET: process.env.APP_SECRET || 'nokabin-dev-secret-change-in-production-2026',
   OTP_TEST_MODE: String(process.env.OTP_TEST_MODE ?? 'true').toLowerCase() !== 'false',
+  MELIPAYAMAK_USERNAME: process.env.MELIPAYAMAK_USERNAME || '09225603574',
+  MELIPAYAMAK_PASSWORD: process.env.MELIPAYAMAK_PASSWORD || process.env.MELIPAYAMAK_TOKEN || '80c521ed-98e2-49e9-97f9-869c2af8c27c',
   MELIPAYAMAK_TOKEN: process.env.MELIPAYAMAK_TOKEN || '80c521ed-98e2-49e9-97f9-869c2af8c27c',
   MELIPAYAMAK_OTP_BODY_ID: Number(process.env.MELIPAYAMAK_OTP_BODY_ID) || 595982,
   ADMIN_PHONE: normalizePhone(process.env.ADMIN_PHONE || '09225603574'),
