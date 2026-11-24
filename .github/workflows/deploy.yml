@@ -37,6 +37,8 @@ jobs:
             git remote set-url origin https://github.com/king-sadegh/nowcabin.git
             git fetch origin main
             git reset --hard origin/main
+            echo "=== Previous nokabin-app logs ==="
+            docker logs --tail 60 nokabin-app || true
             chmod +x deploy.sh
             bash deploy.sh
 
@@ -44,10 +46,12 @@ jobs:
             for i in $(seq 1 15); do
               if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
                 echo "Health check passed!"
+                docker logs --tail 50 nokabin-app || true
                 exit 0
               fi
               sleep 2
             done
 
             echo "Health check failed!"
+            docker logs --tail 50 nokabin-app || true
             exit 1

@@ -16,6 +16,31 @@ function getUserPhotoQuota(userId) {
   };
 }
 
+const MELIPAYAMAK_ERROR_MESSAGES = {
+  '-112': 'دسترسی وب‌سرویس برای حساب ملی‌پیامک غیرفعال است (کد -112).',
+  '-111': 'IP سرور درخواست‌کننده در پنل ملی‌پیامک مجاز نیست (کد -111).',
+  '-110': 'الزام استفاده از API Key به‌جای رمز عبور در پنل ملی‌پیامک (کد -110).',
+  '-109': 'تنظیم IP مجاز سرور در بخش تنظیمات وب‌سرویس پنل ملی‌پیامک الزامی است (کد -109).',
+  '-108': 'IP سرور به‌دلیل تلاش ناموفق در پنل ملی‌پیامک مسدود شده است (کد -108).',
+  '-10': 'ارسال لینک یا کاراکتر غیرمجاز در متغیر پترن (کد -10).',
+  '-7': 'خطا در خط فرستنده خدماتی ملی‌پیامک (کد -7).',
+  '-6': 'خطای داخلی ساختار پترن در ملی‌پیامک (کد -6).',
+  '-5': 'تعداد متغیرهای ارسالی با متغیرهای پترن همخوانی ندارد (کد -5).',
+  '-4': 'کد پترن (595982) اشتباه است یا هنوز در پنل ملی‌پیامک تأیید نهایی نشده است (کد -4).',
+  '-3': 'سرشماره خدماتی در سیستم تعریف نشده است (کد -3).',
+  '-2': 'محدودیت تعداد گیرنده در هر فراخوانی (کد -2).',
+  '-1': 'دسترسی به وب‌سرویس پترن (خدماتی) برای این حساب غیرفعال است (کد -1).',
+  '0': 'نام کاربری یا رمز وب‌سرویس (API Key) ملی‌پیامک اشتباه است (کد 0).',
+  '2': 'اعتبار (شارژ) پنل ملی‌پیامک کافی نیست (کد 2).',
+  '6': 'سامانه ملی‌پیامک در حال بروزرسانی است (کد 6).',
+  '7': 'متن پیامک حاوی کلمه فیلترشده است (کد 7).',
+  '10': 'پنل کاربری ملی‌پیامک غیرفعال است (کد 10).',
+  '11': 'ارسال پیامک انجام نشد (کد 11).',
+  '12': 'مدارک احراز هویت پنل ملی‌پیامک کامل نیست (کد 12).',
+  '18': 'شماره موبایل گیرنده معتبر نیست (کد 18).',
+  '19': 'سقف محدودیت ارسال ساعتی API تکمیل شده است (کد 19).',
+};
+
 async function sendMelipayamakOtp(phone, code) {
   const username = String(config.MELIPAYAMAK_USERNAME || '09225603574').trim();
   const password = String(config.MELIPAYAMAK_PASSWORD || config.MELIPAYAMAK_TOKEN || '80c521ed-98e2-49e9-97f9-869c2af8c27c').trim();
@@ -28,7 +53,7 @@ async function sendMelipayamakOtp(phone, code) {
   try {
     const resp = await fetch(restUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify({
         username,
         password,
@@ -42,7 +67,8 @@ async function sendMelipayamakOtp(phone, code) {
       restData = JSON.parse(restText);
     } catch {}
 
-    if (resp.ok && restData && Number(restData.RetStatus) === 1) {
+    const valStr = restData && restData.Value !== undefined ? String(restData.Value).trim() : '';
+    if (resp.ok && restData && Number(restData.RetStatus) === 1 && (valStr.length > 3 || Number(valStr) > 100)) {
       return restData;
     }
     console.error(`[Melipayamak BaseServiceNumber Error] HTTP ${resp.status} | Response: ${restText}`);
@@ -50,32 +76,48 @@ async function sendMelipayamakOtp(phone, code) {
     console.error('[Melipayamak BaseServiceNumber Exception]', restErr?.message || restErr);
   }
 
-  // Fallback to console.melipayamak.com shared pattern endpoint (token without hyphens)
+  // Fallback 1: console.melipayamak.com shared pattern endpoint (token without hyphens)
   const cleanToken = password.replace(/-/g, '') || '80c521ed98e249e997f9869c2af8c27c';
-  const fallbackUrl = `https://console.melipayamak.com/api/send/shared/${encodeURIComponent(cleanToken)}`;
-  const fbResp = await fetch(fallbackUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      bodyId,
-      to: phone,
-      args: [String(code)],
-    }),
-  });
-  const fbText = await fbResp.text();
-  let fbData = null;
-  try {
-    fbData = JSON.parse(fbText);
-  } catch {}
+  for (const tokenCandidate of [cleanToken, password]) {
+    try {
+      const fallbackUrl = `https://console.melipayamak.com/api/send/shared/${encodeURIComponent(tokenCandidate)}`;
+      const fbResp = await fetch(fallbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({
+          bodyId,
+          to: phone,
+          args: [String(code)],
+        }),
+      });
+      const fbText = await fbResp.text();
+      let fbData = null;
+      try {
+        fbData = JSON.parse(fbText);
+      } catch {}
 
-  if (!fbResp.ok || (fbData && fbData.status && /error|fail|invalid|مشترک|غیرفعال/i.test(String(fbData.status)))) {
-    console.error(
-      `[Melipayamak Fallback Error] HTTP ${fbResp.status} | Fallback Response: ${fbText} | Primary Response: ${restText}`
-    );
-    throw new Error(`Melipayamak OTP failed (Primary: ${restText || 'N/A'} | Fallback HTTP ${fbResp.status}: ${fbText})`);
+      if (fbResp.ok && fbData && fbData.recId) {
+        return fbData;
+      }
+      if (fbResp.ok && fbData && !fbData.status && !/error|fail|invalid|مشترک|غیرفعال|اشتباه/i.test(fbText)) {
+        return fbData;
+      }
+      console.error(`[Melipayamak Console Fallback (${tokenCandidate.slice(0, 8)}...)] HTTP ${fbResp.status} | Response: ${fbText}`);
+    } catch (fbErr) {
+      console.error('[Melipayamak Console Fallback Exception]', fbErr?.message || fbErr);
+    }
   }
 
-  return fbData || { ok: true };
+  const valKey = restData && restData.Value !== undefined ? String(restData.Value).trim() : '';
+  const retKey = restData && restData.RetStatus !== undefined ? String(restData.RetStatus).trim() : '';
+  const reason =
+    MELIPAYAMAK_ERROR_MESSAGES[valKey] ||
+    MELIPAYAMAK_ERROR_MESSAGES[retKey] ||
+    (restText ? `پاسخ وب‌سرویس ملی‌پیامک: ${restText}` : 'عدم پاسخ از سرور ملی‌پیامک');
+
+  const err = new Error(`Melipayamak OTP failed: ${reason} | Raw: ${restText}`);
+  err.userMessage = `خطا در ارسال پیامک کد تایید: ${reason}`;
+  throw err;
 }
 
 router.post('/request-otp', async (req, res) => {
@@ -104,7 +146,9 @@ router.post('/request-otp', async (req, res) => {
       console.log(`[OTP SMS] Sent to ${phone} via Melipayamak (bodyId=${config.MELIPAYAMAK_OTP_BODY_ID}):`, smsRes);
     } catch (err) {
       console.error('[OTP SMS ERROR]', err?.message || err);
-      return res.status(502).json({ error: 'خطا در ارسال پیامک کد تایید. لطفاً لحظاتی دیگر دوباره تلاش کنید.' });
+      return res.status(502).json({
+        error: err?.userMessage || 'خطا در ارسال پیامک کد تایید. لطفاً لحظاتی دیگر دوباره تلاش کنید.',
+      });
     }
   }
 
