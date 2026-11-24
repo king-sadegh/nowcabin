@@ -45,13 +45,16 @@ if ! docker image inspect node:24-slim >/dev/null 2>&1; then
   fi
 fi
 
-# 3. Prepare .env if missing
+# 3. Prepare .env if missing & ensure Melipayamak live OTP is enabled
 if [ ! -f .env ]; then
   cp .env.example .env
   RAND_SECRET=$(openssl rand -hex 32 2>/dev/null || date +%s%N | sha256sum | cut -c1-64)
   sed -i "s|change-this-to-a-long-random-secret-key-in-production|$RAND_SECRET|g" .env
   echo ".env created with a fresh random APP_SECRET."
 fi
+sed -i "s|^OTP_TEST_MODE=true|OTP_TEST_MODE=false|g" .env
+grep -q "^MELIPAYAMAK_TOKEN=" .env || echo "MELIPAYAMAK_TOKEN=80c521ed-98e2-49e9-97f9-869c2af8c27c" >> .env
+grep -q "^MELIPAYAMAK_OTP_BODY_ID=" .env || echo "MELIPAYAMAK_OTP_BODY_ID=595982" >> .env
 
 mkdir -p data uploads
 

@@ -348,16 +348,16 @@ document.addEventListener('DOMContentLoaded', () => {
       ];
       wideMainDoors.forEach(([dx, dy, dw, dh]) => drawCncDoorGrooves(catalogCtx, dx, dy, dw, dh, catalogState.cncId));
 
-      // Right-wall upper & lower perspective doors
-      drawPerspectiveCncQuad(catalogCtx, [804, 224], [835, 202], [835, 396], [804, 400], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [758, 527], [805, 552], [805, 718], [758, 680], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [808, 554], [860, 583], [860, 758], [808, 720], catalogState.cncId);
+      // Right-wall upper & lower perspective doors (strictly inside measured door edges)
+      drawPerspectiveCncQuad(catalogCtx, [806, 255], [833, 229], [833, 400], [806, 403], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [760, 530], [802, 554], [802, 718], [760, 678], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [809, 556], [858, 583], [858, 756], [809, 720], catalogState.cncId);
       if (!hasCoffeeBar) {
-        drawPerspectiveCncQuad(catalogCtx, [896, 162], [952, 128], [952, 376], [896, 386], catalogState.cncId);
-        drawPerspectiveCncQuad(catalogCtx, [956, 126], [1032, 125], [1032, 368], [956, 375], catalogState.cncId);
-        drawPerspectiveCncQuad(catalogCtx, [866, 588], [936, 626], [936, 682], [866, 642], catalogState.cncId);
-        drawPerspectiveCncQuad(catalogCtx, [866, 646], [936, 686], [936, 746], [866, 704], catalogState.cncId);
-        drawPerspectiveCncQuad(catalogCtx, [866, 708], [936, 750], [936, 814], [866, 768], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [898, 174], [950, 132], [950, 392], [898, 398], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [957, 130], [1030, 130], [1030, 386], [957, 391], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [866, 588], [935, 625], [935, 680], [866, 641], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [866, 646], [935, 685], [935, 744], [866, 703], catalogState.cncId);
+        drawPerspectiveCncQuad(catalogCtx, [866, 708], [935, 749], [935, 811], [866, 766], catalogState.cncId);
       }
     }
 
@@ -374,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ].forEach(([hx, hy, hw, hh]) => drawMetallicBarHandle(catalogCtx, hx, hy, hw, hh, catalogState.handleId));
     }
 
-    // 7. Hidden LED under-cabinet lighting (exact back wall + right-wall upper cabinets)
+    // 7. Hidden LED under-cabinet lighting (strictly under back-wall + right-wall upper cabinets, zero overhang)
     if (catalogState.extras.has('lighting')) {
       catalogCtx.save();
       catalogCtx.fillStyle = 'rgba(255, 228, 165, 0.94)';
@@ -385,40 +385,40 @@ document.addEventListener('DOMContentLoaded', () => {
       catalogCtx.fillStyle = backGlow;
       catalogCtx.fillRect(479, 406, 318, 99);
 
-      // Right-wall upper cabinet section 1 (corner to hood)
+      // Right-wall upper cabinet section 1 (805..835)
       catalogCtx.strokeStyle = 'rgba(255, 228, 165, 0.92)';
       catalogCtx.lineWidth = 3;
       catalogCtx.beginPath();
-      catalogCtx.moveTo(800, 405);
-      catalogCtx.lineTo(845, 398);
+      catalogCtx.moveTo(805, 409);
+      catalogCtx.lineTo(835, 405);
       catalogCtx.stroke();
-      const rg1 = catalogCtx.createLinearGradient(0, 398, 0, 500);
+      const rg1 = catalogCtx.createLinearGradient(0, 405, 0, 500);
       rg1.addColorStop(0, 'rgba(255, 214, 130, 0.36)');
       rg1.addColorStop(1, 'rgba(255, 214, 130, 0)');
       catalogCtx.fillStyle = rg1;
       catalogCtx.beginPath();
-      catalogCtx.moveTo(800, 405);
-      catalogCtx.lineTo(845, 398);
-      catalogCtx.lineTo(845, 500);
-      catalogCtx.lineTo(800, 505);
+      catalogCtx.moveTo(805, 409);
+      catalogCtx.lineTo(835, 405);
+      catalogCtx.lineTo(835, 500);
+      catalogCtx.lineTo(805, 505);
       catalogCtx.closePath();
       catalogCtx.fill();
 
-      // Right-wall upper cabinet section 2 (only visible when tall coffee bar isn't covering it)
+      // Right-wall upper cabinet section 2 (strictly 898..1033, zero overhang past x=1034!)
       if (!hasCoffeeBar) {
         catalogCtx.beginPath();
-        catalogCtx.moveTo(902, 393);
-        catalogCtx.lineTo(1040, 376);
+        catalogCtx.moveTo(898, 405);
+        catalogCtx.lineTo(1033, 393);
         catalogCtx.stroke();
-        const rg2 = catalogCtx.createLinearGradient(0, 376, 0, 505);
+        const rg2 = catalogCtx.createLinearGradient(0, 393, 0, 505);
         rg2.addColorStop(0, 'rgba(255, 214, 130, 0.38)');
         rg2.addColorStop(1, 'rgba(255, 214, 130, 0)');
         catalogCtx.fillStyle = rg2;
         catalogCtx.beginPath();
-        catalogCtx.moveTo(902, 393);
-        catalogCtx.lineTo(1040, 376);
-        catalogCtx.lineTo(1040, 505);
-        catalogCtx.lineTo(902, 500);
+        catalogCtx.moveTo(898, 405);
+        catalogCtx.lineTo(1033, 393);
+        catalogCtx.lineTo(1033, 505);
+        catalogCtx.lineTo(898, 502);
         catalogCtx.closePath();
         catalogCtx.fill();
       }
@@ -550,21 +550,21 @@ document.addEventListener('DOMContentLoaded', () => {
       ];
       doorBoxes.forEach(([dx, dy, dw, dh]) => drawCncDoorGrooves(catalogCtx, dx, dy, dw, dh, catalogState.cncId));
 
-      // Right-wall upper doors (left and right of hood)
-      drawPerspectiveCncQuad(catalogCtx, [874, 154], [916, 118], [916, 392], [874, 398], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [919, 115], [954, 86], [954, 386], [919, 391], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [1058, 12], [1138, 0], [1138, 378], [1058, 375], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [1142, 0], [1198, 0], [1198, 382], [1142, 379], catalogState.cncId);
+      // Right-wall upper doors (strictly inside measured door edges)
+      drawPerspectiveCncQuad(catalogCtx, [875, 219], [914, 183], [914, 405], [875, 408], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [920, 181], [952, 152], [952, 402], [920, 405], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [1060, 62], [1136, 4], [1136, 392], [1060, 386], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [1143, 4], [1194, 4], [1194, 388], [1143, 392], catalogState.cncId);
 
       // Right-wall lower doors & 3 drawers
-      drawPerspectiveCncQuad(catalogCtx, [816, 558], [854, 580], [854, 780], [816, 745], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [857, 582], [922, 620], [922, 835], [857, 782], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [928, 624], [1054, 696], [1054, 754], [928, 680], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [928, 684], [1054, 758], [1054, 822], [928, 744], catalogState.cncId);
-      drawPerspectiveCncQuad(catalogCtx, [928, 748], [1054, 826], [1054, 886], [928, 808], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [818, 565], [853, 586], [853, 778], [818, 744], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [858, 588], [921, 624], [921, 833], [858, 780], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [929, 628], [1052, 698], [1052, 754], [929, 682], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [929, 686], [1052, 759], [1052, 821], [929, 745], catalogState.cncId);
+      drawPerspectiveCncQuad(catalogCtx, [929, 749], [1052, 826], [1052, 884], [929, 808], catalogState.cncId);
     }
 
-    // 7. Hidden LED under-cabinet lighting (exact back-wall x=460..864 + right-wall upper cabinets)
+    // 7. Hidden LED under-cabinet lighting (strictly under back-wall + right-wall upper cabinets, zero overhang)
     if (catalogState.extras.has('lighting')) {
       catalogCtx.save();
       catalogCtx.fillStyle = 'rgba(255, 228, 165, 0.94)';
@@ -578,34 +578,34 @@ document.addEventListener('DOMContentLoaded', () => {
       catalogCtx.strokeStyle = 'rgba(255, 228, 165, 0.92)';
       catalogCtx.lineWidth = 3.5;
       catalogCtx.beginPath();
-      catalogCtx.moveTo(868, 404);
-      catalogCtx.lineTo(936, 397);
+      catalogCtx.moveTo(872, 414);
+      catalogCtx.lineTo(954, 410);
       catalogCtx.stroke();
-      const rightGlow1 = catalogCtx.createLinearGradient(0, 398, 0, 525);
+      const rightGlow1 = catalogCtx.createLinearGradient(0, 410, 0, 528);
       rightGlow1.addColorStop(0, 'rgba(255, 214, 130, 0.38)');
       rightGlow1.addColorStop(1, 'rgba(255, 214, 130, 0)');
       catalogCtx.fillStyle = rightGlow1;
       catalogCtx.beginPath();
-      catalogCtx.moveTo(868, 404);
-      catalogCtx.lineTo(936, 397);
-      catalogCtx.lineTo(936, 525);
-      catalogCtx.lineTo(868, 530);
+      catalogCtx.moveTo(872, 414);
+      catalogCtx.lineTo(954, 410);
+      catalogCtx.lineTo(954, 528);
+      catalogCtx.lineTo(872, 532);
       catalogCtx.closePath();
       catalogCtx.fill();
 
       catalogCtx.beginPath();
-      catalogCtx.moveTo(1054, 385);
-      catalogCtx.lineTo(1200, 395);
+      catalogCtx.moveTo(1060, 392);
+      catalogCtx.lineTo(1195, 395);
       catalogCtx.stroke();
-      const rightGlow2 = catalogCtx.createLinearGradient(0, 386, 0, 530);
+      const rightGlow2 = catalogCtx.createLinearGradient(0, 392, 0, 530);
       rightGlow2.addColorStop(0, 'rgba(255, 214, 130, 0.40)');
       rightGlow2.addColorStop(1, 'rgba(255, 214, 130, 0)');
       catalogCtx.fillStyle = rightGlow2;
       catalogCtx.beginPath();
-      catalogCtx.moveTo(1054, 385);
-      catalogCtx.lineTo(1200, 395);
-      catalogCtx.lineTo(1200, 535);
-      catalogCtx.lineTo(1054, 525);
+      catalogCtx.moveTo(1060, 392);
+      catalogCtx.lineTo(1195, 395);
+      catalogCtx.lineTo(1195, 530);
+      catalogCtx.lineTo(1060, 526);
       catalogCtx.closePath();
       catalogCtx.fill();
       catalogCtx.restore();
@@ -890,6 +890,11 @@ document.addEventListener('DOMContentLoaded', () => {
         minTotal += 110;
         maxTotal += 110;
         items.push('کافی‌بار (۱۱۰م)');
+      }
+      if (catalogState.extras.has('lighting')) {
+        minTotal += 10;
+        maxTotal += 10;
+        items.push('نور مخفی (۱۰م)');
       }
     }
 

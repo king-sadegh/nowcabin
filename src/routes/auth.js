@@ -16,7 +16,36 @@ function getUserPhotoQuota(userId) {
   };
 }
 
-router.post('/request-otp', (req, res) => {
+async function sendMelipayamakOtp(phone, code) {
+  const token = String(config.MELIPAYAMAK_TOKEN || '').trim();
+  if (!token) {
+    throw new Error('MELIPAYAMAK_TOKEN is not configured');
+  }
+  const url = `https://console.melipayamak.com/api/send/shared/${encodeURIComponent(token)}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bodyId: Number(config.MELIPAYAMAK_OTP_BODY_ID) || 595982,
+      to: phone,
+      args: [String(code)],
+    }),
+  });
+  const text = await resp.text();
+  let data = null;
+  try {
+    data = JSON.parse(text);
+  } catch {}
+  if (!resp.ok) {
+    throw new Error(`Melipayamak HTTP ${resp.status}: ${text}`);
+  }
+  if (data && data.status && /error|fail|invalid/i.test(String(data.status))) {
+    throw new Error(`Melipayamak error: ${text}`);
+  }
+  return data || { ok: true };
+}
+
+router.post('/request-otp', async (req, res) => {
   const phone = config.normalizePhone(req.body?.phone);
   const roleHint = req.body?.role === 'agent' ? 'agent' : 'customer';
 
@@ -36,6 +65,14 @@ router.post('/request-otp', (req, res) => {
 
   if (config.OTP_TEST_MODE) {
     console.log(`[OTP TEST MODE] Phone: ${phone} | Code: ${code}`);
+  } else {
+    try {
+      const smsRes = await sendMelipayamakOtp(phone, code);
+      console.log(`[OTP SMS] Sent to ${phone} via Melipayamak (bodyId=${config.MELIPAYAMAK_OTP_BODY_ID}):`, smsRes);
+    } catch (err) {
+      console.error('[OTP SMS ERROR]', err?.message || err);
+      return res.status(502).json({ error: 'خطا در ارسال پیامک کد تایید. لطفاً لحظاتی دیگر دوباره تلاش کنید.' });
+    }
   }
 
   res.json({
