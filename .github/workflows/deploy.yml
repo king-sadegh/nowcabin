@@ -38,7 +38,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             echo "=== Melipayamak GetCredit & Server IP Diagnostic ==="
-            curl -fsS https://api.ipify.org && echo "" || true
+            curl -fsS -X POST https://rest.payamak-panel.com/api/SendSMS/GetCredit \
+              -H "Content-Type: application/json" \
+              -d '{"username":"989225603574","password":"80c521ed-98e2-49e9-97f9-869c2af8c27c"}' && echo "" || true
             curl -fsS -X POST https://rest.payamak-panel.com/api/SendSMS/GetCredit \
               -H "Content-Type: application/json" \
               -d '{"username":"09225603574","password":"80c521ed-98e2-49e9-97f9-869c2af8c27c"}' && echo "" || true

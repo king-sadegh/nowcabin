@@ -42,10 +42,17 @@ const MELIPAYAMAK_ERROR_MESSAGES = {
 };
 
 async function sendMelipayamakOtp(phone, code) {
-  const rawUser = String(config.MELIPAYAMAK_USERNAME || '09225603574').trim();
-  const userWithoutZero = rawUser.startsWith('0') ? rawUser.slice(1) : rawUser;
-  const userWithZero = rawUser.startsWith('0') ? rawUser : `0${rawUser}`;
-  const usernameCandidates = [...new Set([rawUser, userWithZero, userWithoutZero])];
+  const rawUser = String(config.MELIPAYAMAK_USERNAME || '989225603574').trim();
+  const core10 = rawUser.replace(/^(\+98|0098|98|0)/, '');
+  const usernameCandidates = [
+    ...new Set([
+      rawUser,
+      `98${core10}`,
+      `0${core10}`,
+      core10,
+      `+98${core10}`,
+    ]),
+  ];
 
   const password = String(config.MELIPAYAMAK_PASSWORD || config.MELIPAYAMAK_TOKEN || '80c521ed-98e2-49e9-97f9-869c2af8c27c').trim();
   const bodyId = Number(config.MELIPAYAMAK_OTP_BODY_ID) || 595982;
