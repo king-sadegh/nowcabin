@@ -59,7 +59,7 @@ html {
   scroll-behavior: smooth;
   font-size: 16px;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -71,7 +71,7 @@ body {
   line-height: 1.75;
   -webkit-font-smoothing: antialiased;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   position: relative;
 }
 
@@ -80,7 +80,7 @@ section,
 footer,
 main {
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 a {
@@ -2370,8 +2370,39 @@ th {
   .re-grid {
     grid-template-columns: 1fr;
   }
+  #ai-studio,
+  #ai-studio .container,
+  #ai-studio .studio-shell,
+  #ai-studio .studio-grid {
+    overflow: visible;
+  }
   .studio-preview-card {
-    position: static;
+    position: -webkit-sticky;
+    position: sticky;
+    top: 76px;
+    z-index: 35;
+    padding: 12px 14px;
+    gap: 8px;
+    box-shadow: 0 14px 32px rgba(26, 21, 18, 0.32);
+  }
+  .studio-preview-card .studio-preview-frame {
+    max-height: 36vh;
+  }
+  .studio-preview-card .studio-preview-meta {
+    display: none;
+  }
+  .studio-preview-card .catalog-total-card {
+    margin-top: 2px;
+    padding: 8px 12px;
+  }
+  .studio-preview-card #applyStudioToFormBtn {
+    margin-top: 2px !important;
+    padding: 9px 14px;
+    font-size: 0.84rem;
+  }
+  #catalogOptionsPanel {
+    position: relative;
+    z-index: 10;
   }
   .services-grid,
   .steps-grid {
@@ -2498,9 +2529,35 @@ th {
   .estimator-card,
   .card,
   .re-section-box,
-  .re-form-card,
-  .studio-preview-card {
+  .re-form-card {
     padding: 16px 12px;
+  }
+  .studio-preview-card {
+    top: 62px;
+    padding: 10px 10px;
+    gap: 6px;
+    border-radius: 16px;
+  }
+  .studio-preview-card .studio-preview-badge {
+    font-size: 0.72rem;
+    padding: 4px 8px;
+  }
+  .studio-preview-card .catalog-before-btn {
+    font-size: 0.72rem;
+    padding: 4px 9px;
+  }
+  .studio-preview-card .studio-preview-frame {
+    max-height: 30vh;
+  }
+  .studio-preview-card .catalog-total-card {
+    padding: 6px 10px;
+  }
+  .studio-preview-card .catalog-total-card .total-amount {
+    font-size: 0.98rem;
+  }
+  .studio-preview-card #applyStudioToFormBtn {
+    padding: 7px 10px;
+    font-size: 0.78rem;
   }
   .studio-upload-slots {
     grid-template-columns: repeat(3, 1fr);
