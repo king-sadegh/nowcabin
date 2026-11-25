@@ -47,9 +47,9 @@
         <div class="card auth-card">
           <div style="text-align: center; margin-bottom: 18px;">
             <img src="/assets/logo.png" alt="نوکابین" style="width: 68px; height: 68px; border-radius: 50%; margin: 0 auto 10px;" />
-            <h1 style="font-size: 1.4rem; font-weight: 900;">ورود / ثبت‌نام با کد یک‌بارمصرف (OTP)</h1>
-            <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 4px;">
-              سیستم تایید پیامکی در <strong>حالت تستی</strong> فعال است؛ کد OTP پس از درخواست روی صفحه نمایش داده می‌شود.
+            <h1 style="font-size: 1.4rem; font-weight: 900;">ورود / ثبت‌نام در پنل کاربری</h1>
+            <p id="authSubtitleText" style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 4px;">
+              شماره همراه خود را برای دریافت کد تایید پیامکی وارد کنید.
             </p>
           </div>
 
@@ -92,7 +92,7 @@
             </div>
 
             <button type="submit" class="btn btn-primary" style="width: 100%;" id="requestOtpBtn">
-              دریافت کد تایید تستی (OTP)
+              دریافت کد تایید (OTP)
             </button>
           </form>
 
@@ -109,11 +109,11 @@
           </form>
 
           <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); font-size: 0.82rem; color: var(--text-secondary);">
-            <strong>حساب‌های نمونه آماده برای تست سریع:</strong>
+            <strong>ورود سریع بدون نیاز به کد پیامکی (نمونه و مدیریت):</strong>
             <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
-              <button type="button" class="btn btn-outline btn-sm" data-demo-phone="09123334455" data-demo-role="customer">مشتری نمونه (09123334455)</button>
-              <button type="button" class="btn btn-outline btn-sm" data-demo-phone="09121112233" data-demo-role="agent">مشاور نمونه (09121112233)</button>
-              <button type="button" class="btn btn-outline btn-sm" data-demo-phone="09225603574" data-demo-role="admin">مدیر سایت (09225603574)</button>
+              <button type="button" class="btn btn-outline btn-sm" data-demo-phone="09123334455" data-demo-role="customer">مشتری نمونه</button>
+              <button type="button" class="btn btn-outline btn-sm" data-demo-phone="09121112233" data-demo-role="agent">مشاور نمونه</button>
+              <button type="button" class="btn btn-outline btn-sm" data-demo-phone="09225603574" data-demo-role="admin">مدیریت</button>
             </div>
           </div>
         </div>

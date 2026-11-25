@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const kitchenSizeSlider = document.getElementById('kitchenSizeSlider');
   const sizeValueDisplay = document.getElementById('sizeValueDisplay');
   const catalogTotalMeters = document.getElementById('catalogTotalMeters');
+  const catalogTotalPriceBox = document.getElementById('catalogTotalPriceBox');
   const catalogTotalPriceValue = document.getElementById('catalogTotalPriceValue');
   const catalogPriceBreakdown = document.getElementById('catalogPriceBreakdown');
 
@@ -899,6 +900,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    if (catalogTotalPriceBox) {
+      catalogTotalPriceBox.classList.toggle('has-selection', items.length > 0);
+      catalogTotalPriceBox.classList.toggle('has-multiple-items', items.length > 1);
+    }
+
     if (catalogTotalPriceValue) {
       if (minTotal === 0 && maxTotal === 0) {
         catalogTotalPriceValue.textContent = '۰ تومان';
@@ -910,6 +916,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (catalogPriceBreakdown) {
       catalogPriceBreakdown.textContent = items.length ? items.join(' + ') : 'رنگ یا خدمات موردنظر را انتخاب کنید';
+      if (items.length > 1) {
+        const shortSum =
+          minTotal === maxTotal
+            ? `${toPersianDigits(minTotal)}م`
+            : `${toPersianDigits(minTotal)} تا ${toPersianDigits(maxTotal)}م`;
+        catalogPriceBreakdown.dataset.mobileTotal = ` — جمع: ${shortSum}`;
+      } else {
+        catalogPriceBreakdown.dataset.mobileTotal = '';
+      }
     }
   }
 

@@ -163,9 +163,94 @@ async function sendMelipayamakOtp(phone, code) {
   throw err;
 }
 
+const DIRECT_LOGIN_ACCOUNTS = {
+  customer: {
+    phone: '09123334455',
+    fullName: 'سارا محمدی',
+    role: 'customer',
+    messenger: null,
+    agencyName: '',
+  },
+  agent: {
+    phone: '09121112233',
+    fullName: 'حسین رضایی',
+    role: 'agent',
+    messenger: 'bale',
+    agencyName: 'مسکن نیاوران',
+  },
+  admin: {
+    phone: config.ADMIN_PHONE,
+    fullName: 'مدیریت نوکابین',
+    role: 'admin',
+    messenger: 'whatsapp',
+    agencyName: '',
+  },
+};
+
+function getDirectAccountSpec(phone, role) {
+  if (role === 'admin' || phone === config.ADMIN_PHONE) {
+    return DIRECT_LOGIN_ACCOUNTS.admin;
+  }
+  if (phone === '09121112233') return DIRECT_LOGIN_ACCOUNTS.agent;
+  if (phone === '09123334455') return DIRECT_LOGIN_ACCOUNTS.customer;
+  return null;
+}
+
+function getOrCreateDirectUser(spec) {
+  let user = db.prepare('SELECT * FROM users WHERE phone = ?').get(spec.phone);
+  const defaultCommission = Number(getSetting('default_commission_percent', config.DEFAULT_AGENT_COMMISSION_PERCENT));
+  if (!user) {
+    const info = db.prepare(`
+      INSERT INTO users (phone, full_name, role, messenger, agency_name, commission_percent, is_approved)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+    `).run(spec.phone, spec.fullName, spec.role, spec.messenger, spec.agencyName, defaultCommission);
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
+  } else if (user.role !== spec.role) {
+    db.prepare('UPDATE users SET role = ?, is_approved = 1 WHERE id = ?').run(spec.role, user.id);
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+  }
+  return user;
+}
+
+router.post('/demo-login', (req, res) => {
+  const requestedRole = ['customer', 'agent', 'admin'].includes(req.body?.role) ? req.body.role : '';
+  const phone = config.normalizePhone(req.body?.phone);
+  const spec = DIRECT_LOGIN_ACCOUNTS[requestedRole] || getDirectAccountSpec(phone, requestedRole);
+
+  if (!spec) {
+    return res.status(400).json({ error: 'حساب نمونه یا مدیریت معتبر نیست.' });
+  }
+
+  const user = getOrCreateDirectUser(spec);
+  setSessionCookie(res, user);
+
+  return res.json({
+    ok: true,
+    directLogin: true,
+    user,
+    quota: getUserPhotoQuota(user.id),
+    message: 'ورود مستقیم با موفقیت انجام شد.',
+  });
+});
+
 router.post('/request-otp', async (req, res) => {
   const phone = config.normalizePhone(req.body?.phone);
-  const roleHint = req.body?.role === 'agent' ? 'agent' : 'customer';
+  const requestedRole = ['customer', 'agent', 'admin'].includes(req.body?.role) ? req.body.role : 'customer';
+  const roleHint = requestedRole === 'agent' ? 'agent' : 'customer';
+
+  const directSpec = getDirectAccountSpec(phone, requestedRole);
+  if (directSpec) {
+    const user = getOrCreateDirectUser(directSpec);
+    setSessionCookie(res, user);
+    return res.json({
+      ok: true,
+      directLogin: true,
+      phone: user.phone,
+      user,
+      quota: getUserPhotoQuota(user.id),
+      message: 'ورود مستقیم با موفقیت انجام شد.',
+    });
+  }
 
   if (!config.isValidIranMobile(phone)) {
     return res.status(400).json({ error: 'شماره موبایل وارد شده معتبر نیست (مثال: 09123456789).' });

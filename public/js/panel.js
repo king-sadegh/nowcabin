@@ -55,10 +55,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  async function directLoginAs(role, phone) {
+    try {
+      const data = await apiFetch('/api/auth/demo-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, phone }),
+      });
+      showToast(data.message || 'ورود با موفقیت انجام شد.', 'success');
+      await loadAppState();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
   roleTabs.forEach((btn) => {
     btn.addEventListener('click', () => {
       selectedAuthRole = btn.dataset.role;
       syncRoleTabsUI();
+      if (selectedAuthRole === 'admin') {
+        directLoginAs('admin', '09225603574');
+      }
     });
   });
 
@@ -66,8 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       selectedAuthRole = btn.dataset.demoRole;
       syncRoleTabsUI();
-      authPhoneInput.value = btn.dataset.demoPhone;
-      otpRequestForm.requestSubmit();
+      directLoginAs(btn.dataset.demoRole, btn.dataset.demoPhone);
     });
   });
 
@@ -82,6 +98,11 @@ document.addEventListener('DOMContentLoaded', () => {
           role: selectedAuthRole,
         }),
       });
+      if (data.directLogin) {
+        showToast(data.message || 'ورود با موفقیت انجام شد.', 'success');
+        await loadAppState();
+        return;
+      }
       pendingPhone = data.phone;
       otpRequestForm.style.display = 'none';
       otpVerifyForm.style.display = 'block';
@@ -131,6 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logoutBtn.addEventListener('click', async () => {
     await apiFetch('/api/auth/logout', { method: 'POST' });
+    selectedAuthRole = 'customer';
+    if (window.location.search.includes('role=admin')) {
+      window.history.replaceState({}, '', '/panel.html');
+    }
     showToast('از حساب کاربری خارج شدید.', 'info');
     await loadAppState();
   });

@@ -2558,11 +2558,27 @@ th {
     height: auto;
     max-height: none;
   }
-  .studio-preview-card .catalog-total-card {
-    padding: 6px 10px;
+  .studio-preview-card .catalog-total-card:not(.has-selection) {
+    display: none;
   }
+  .studio-preview-card .catalog-total-label,
   .studio-preview-card .catalog-total-card .total-amount {
-    font-size: 0.98rem;
+    display: none;
+  }
+  .studio-preview-card .catalog-total-card.has-selection {
+    padding: 5px 10px;
+    margin-top: 0;
+  }
+  .studio-preview-card #catalogPriceBreakdown {
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: #f3d49c;
+    line-height: 1.45;
+  }
+  .studio-preview-card .catalog-total-card.has-multiple-items #catalogPriceBreakdown::after {
+    content: attr(data-mobile-total);
+    color: #ffffff;
+    font-weight: 900;
   }
   .studio-upload-slots {
     grid-template-columns: repeat(3, 1fr);
