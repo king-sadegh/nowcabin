@@ -453,6 +453,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <div class="panel-tabs" id="adminTabs">
         <button type="button" class="panel-tab ${activeAdminTab === 'requests' ? 'active' : ''}" data-tab="requests">درخواست‌های بازدید (${toPersianDigits(requests.length)})</button>
+        <button type="button" class="panel-tab ${activeAdminTab === 'outreach' ? 'active' : ''}" data-tab="outreach">
+          🤖 ربات دعوت مشاورین (بله و واتس‌اپ) (${toPersianDigits(stats.outreachTotalContacts || 0)})
+          ${
+            stats.outreachSeriousCount > 0
+              ? `<span class="tag" style="background:#dc2626; color:#fff; margin-right:6px;">${toPersianDigits(stats.outreachSeriousCount)} جدی 🔴</span>`
+              : ''
+          }
+        </button>
         <button type="button" class="panel-tab ${activeAdminTab === 'agents' ? 'active' : ''}" data-tab="agents">مشاورین و پورسانت‌ها (${toPersianDigits(agents.length)})</button>
         <button type="button" class="panel-tab ${activeAdminTab === 'gallery' ? 'active' : ''}" data-tab="gallery">گالری تغییرات واقعی (${toPersianDigits(gallery.length)})</button>
         <button type="button" class="panel-tab ${activeAdminTab === 'settings' ? 'active' : ''}" data-tab="settings">تنظیمات سیستم</button>
@@ -812,6 +820,10 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast(err.message, 'error');
         }
       });
+    } else if (activeAdminTab === 'outreach') {
+      if (typeof window.renderOutreachAdminTab === 'function') {
+        await window.renderOutreachAdminTab(tabContent);
+      }
     }
   }
 

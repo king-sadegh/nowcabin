@@ -13,6 +13,8 @@ const galleryRoutes = require('./src/routes/gallery');
 const adminRoutes = require('./src/routes/admin');
 const aiStudioRoutes = require('./src/routes/ai-studio');
 const projectRoutes = require('./src/routes/projects');
+const outreachRoutes = require('./src/routes/outreach');
+const { outreachManager } = require('./src/outreach/outreachManager');
 const { SAMPLE_KITCHEN_CATALOG } = require('./src/data/sampleKitchenCatalog');
 
 const app = express();
@@ -25,7 +27,7 @@ app.use(
     crossOriginEmbedderPolicy: false,
   })
 );
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(attachUser);
@@ -56,6 +58,7 @@ app.use('/api/gallery', galleryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai-studio', aiStudioRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/outreach', outreachRoutes);
 
 // Friendly HTML route aliases
 app.get(['/changes', '/gallery.html', '/gallery'], (_req, res) => {
@@ -78,6 +81,8 @@ app.use((err, _req, res, _next) => {
     error: err.message || 'خطای غیرمنتظره‌ای در سرور رخ داد.',
   });
 });
+
+outreachManager.init();
 
 app.listen(config.PORT, '0.0.0.0', () => {
   console.log(`NoKabin server running on http://0.0.0.0:${config.PORT} (OTP_TEST_MODE=${config.OTP_TEST_MODE})`);

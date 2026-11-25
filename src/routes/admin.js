@@ -56,6 +56,16 @@ router.get('/overview', (_req, res) => {
 
   const gallery = db.prepare('SELECT * FROM gallery_projects ORDER BY id DESC').all();
 
+  const outreachSummary = db
+    .prepare(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN is_serious = 1 THEN 1 ELSE 0 END) AS serious_count,
+        SUM(CASE WHEN unread_count > 0 THEN 1 ELSE 0 END) AS unread_count
+      FROM outreach_contacts
+    `)
+    .get();
+
   const stats = {
     totalRequests: requests.length,
     pendingRequests: requests.filter((r) => r.status === 'pending').length,
@@ -67,6 +77,9 @@ router.get('/overview', (_req, res) => {
       .filter((c) => c.status !== 'paid')
       .reduce((sum, c) => sum + Number(c.amount_toman || 0), 0),
     galleryCount: gallery.length,
+    outreachTotalContacts: Number(outreachSummary?.total || 0),
+    outreachSeriousCount: Number(outreachSummary?.serious_count || 0),
+    outreachUnreadCount: Number(outreachSummary?.unread_count || 0),
   };
 
   const settings = {

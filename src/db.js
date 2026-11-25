@@ -203,6 +203,46 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (project_id) REFERENCES kitchen_projects(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS outreach_contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    phone TEXT NOT NULL UNIQUE,
+    full_name TEXT NOT NULL DEFAULT '',
+    agency_name TEXT NOT NULL DEFAULT '',
+    district TEXT NOT NULL DEFAULT 'شمال و شرق تهران',
+    notes TEXT NOT NULL DEFAULT '',
+    wa_status TEXT NOT NULL DEFAULT 'queued' CHECK(wa_status IN ('queued', 'sent', 'replied', 'registered', 'opted_out', 'failed', 'skipped')),
+    wa_sent_at TEXT DEFAULT NULL,
+    wa_last_msg_at TEXT DEFAULT NULL,
+    wa_template_idx INTEGER DEFAULT NULL,
+    wa_error TEXT DEFAULT '',
+    bale_status TEXT NOT NULL DEFAULT 'queued' CHECK(bale_status IN ('queued', 'sent', 'replied', 'registered', 'opted_out', 'failed', 'skipped')),
+    bale_sent_at TEXT DEFAULT NULL,
+    bale_last_msg_at TEXT DEFAULT NULL,
+    bale_template_idx INTEGER DEFAULT NULL,
+    bale_error TEXT DEFAULT '',
+    is_serious INTEGER NOT NULL DEFAULT 0,
+    serious_reason TEXT NOT NULL DEFAULT '',
+    serious_at TEXT DEFAULT NULL,
+    bot_paused INTEGER NOT NULL DEFAULT 0,
+    registered_agent_id INTEGER DEFAULT NULL,
+    unread_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS outreach_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contact_id INTEGER NOT NULL,
+    channel TEXT NOT NULL CHECK(channel IN ('whatsapp', 'bale')),
+    direction TEXT NOT NULL CHECK(direction IN ('outbound', 'inbound')),
+    sender_type TEXT NOT NULL DEFAULT 'bot' CHECK(sender_type IN ('campaign', 'bot', 'admin', 'contact')),
+    body TEXT NOT NULL,
+    matched_rule TEXT DEFAULT '',
+    external_id TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (contact_id) REFERENCES outreach_contacts(id) ON DELETE CASCADE
+  );
 `);
 
 function getSetting(key, fallback) {
@@ -218,10 +258,33 @@ function setSetting(key, value) {
 }
 
 function seedDefaults() {
+  const defaultTemplates = [
+    'سلام {{name}} عزیز وقت بخیر 🌹\nمن از مجموعه تخصصی «نوکابین» پیام می‌دم. ما کابینت‌های قدیمی رو بدون تخریب و تعویض، با رنگ پلی‌اورتان در ۱۵ روز کاری با یک‌دهم هزینه تعویض (حدود ۷۰ میلیون به‌جای ۷۰۰ میلیون) نو می‌کنیم.\nبرای مشاورین املاک محترم منطقه {{district}}، ۵٪ پورسانت نقدی (~۳.۵ میلیون تومان) + ۲ میلیون تخفیف ویژه برای مشتری در نظر گرفتیم.\nمایل هستید شرایط همکاری و لینک اختصاصی‌تون رو بفرستم؟',
+    'درود {{name}} گرامی 🌟\nخیلی از فایل‌های فروش یا اجاره در {{district}} فقط به‌خاطر قدیمی بودن کابینت آشپزخانه دیرتر معامله می‌شن.\nما در «نوکابین» بدون تخریب و با حفظ بدنه، کابینت‌ها رو با رنگ تخصصی پلی‌اورتان با ۱/۱۰ قیمت تعویض بازسازی می‌کنیم.\nبا معرفی هر مشتری، هم مشتری ۲ میلیون تخفیف می‌گیره و هم ۵٪ مبلغ قرارداد پورسانت تقدیم شما می‌شه. دوست دارید نمونه‌کارهای واقعی قبل و بعد رو ببینید؟',
+    'سلام و احترام خدمت {{name}} عزیز 🙏\nاز تیم مدیریت «نوکابین» (بازسازی تخصصی کابینت بدون تعویض) مزاحم می‌شم.\nطرح همکاری ویژه‌ای با دفاتر املاک {{district}} شروع کردیم: اجرای ۱۵ روزه با رنگ پلی‌اورتان، ۲ میلیون تخفیف مستقیم برای مشتری شما و ۵٪ پورسانت همکاری برای شما.\nاگر موافق باشید لینک دعوت اختصاصی و عکس نمونه‌کارها رو براتون ارسال کنم.'
+  ];
+
   const defaultSettings = {
     max_photos_per_user: String(config.MAX_PHOTOS_PER_USER),
     default_commission_percent: String(config.DEFAULT_AGENT_COMMISSION_PERCENT),
     referral_discount_toman: String(config.REFERRAL_DISCOUNT_TOMAN),
+    outreach_wa_campaign_enabled: 'false',
+    outreach_bale_campaign_enabled: 'false',
+    outreach_auto_reply_enabled: 'true',
+    outreach_warmup_enabled: 'true',
+    outreach_wa_daily_limit: '45',
+    outreach_bale_daily_limit: '40',
+    outreach_min_delay_sec: '90',
+    outreach_max_delay_sec: '210',
+    outreach_work_hour_start: '9',
+    outreach_work_hour_end: '21',
+    outreach_wa_proxy_url: '',
+    outreach_bale_proxy_url: '',
+    outreach_admin_alert_phone: config.ADMIN_PHONE || '09225603574',
+    outreach_admin_alert_channel: 'both',
+    outreach_templates_json: JSON.stringify(defaultTemplates),
+    outreach_wa_started_date: '',
+    outreach_bale_started_date: '',
   };
 
   for (const [k, v] of Object.entries(defaultSettings)) {

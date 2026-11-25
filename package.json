@@ -9,10 +9,16 @@
   },
   "dependencies": {
     "@google/genai": "^3.6.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2",
     "helmet": "^8.1.0",
+    "https-proxy-agent": "^9.1.0",
     "multer": "^2.5.0",
+    "pino": "^10.4.0",
+    "playwright-core": "^1.65.1",
+    "qrcode": "^1.5.4",
+    "socks-proxy-agent": "^10.1.0",
     "three": "^0.187.0"
   },
   "engines": {
