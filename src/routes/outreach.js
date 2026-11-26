@@ -343,6 +343,15 @@ router.post('/bale/login-phone', async (req, res) => {
   }
 });
 
+router.post('/bale/select-iran', async (_req, res) => {
+  try {
+    const state = await outreachManager.bale.selectIranCountry();
+    res.json({ ok: true, bale: state });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.post('/bale/login-otp', async (req, res) => {
   try {
     const state = await outreachManager.bale.submitOtpCode(req.body?.code);

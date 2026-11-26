@@ -197,6 +197,159 @@ class BaleWebClient extends EventEmitter {
   }
 
   /**
+   * Attempts to select Iran (+98) if Bale Web is showing a country selector or country list modal.
+   */
+  async selectIranCountry() {
+    if (!this.page || this.page.isClosed()) {
+      await this.start();
+    }
+    this.busy = true;
+    try {
+      await this._ensureIranSelectedInDom();
+      await this.page.waitForTimeout(1000);
+      await this.refreshStatusAndScreenshot();
+      return this.getState();
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async _ensureIranSelectedInDom() {
+    // 1. Check if a country list/dropdown is currently open (visible list of countries)
+    const clickedOpenOption = await this._clickIranOptionIfVisible();
+    if (clickedOpenOption) return true;
+
+    // 2. Check if Iran (+98) is already selected on the page
+    const pageInfo = await this.page.evaluate(() => {
+      const bodyText = document.body?.innerText || '';
+      const hasIranText = /ایران|Iran/i.test(bodyText);
+      const has98 = /\+98/.test(bodyText);
+      const inputs = Array.from(document.querySelectorAll('input:not([type="hidden"])'));
+      const countryInputIdx = inputs.findIndex((el) => {
+        const meta = `${el.placeholder || ''} ${el.getAttribute('aria-label') || ''} ${el.name || ''} ${el.value || ''}`;
+        return /کشور|country/i.test(meta);
+      });
+      return { hasIranText, has98, countryInputIdx };
+    });
+
+    if (pageInfo.hasIranText && pageInfo.has98) {
+      return true;
+    }
+
+    // 3. If there is a country selector input/button, click it and pick Iran
+    if (pageInfo.countryInputIdx >= 0) {
+      const countryInput = this.page.locator('input:not([type="hidden"])').nth(pageInfo.countryInputIdx);
+      await countryInput.click().catch(() => {});
+      await this.page.waitForTimeout(600);
+      if (await this._clickIranOptionIfVisible()) return true;
+
+      // Try typing "ایران" into country search/input
+      await countryInput.fill('ایران').catch(() => {});
+      await this.page.waitForTimeout(700);
+      if (await this._clickIranOptionIfVisible()) return true;
+
+      await countryInput.fill('Iran').catch(() => {});
+      await this.page.waitForTimeout(700);
+      if (await this._clickIranOptionIfVisible()) return true;
+    } else {
+      // Try clicking any dropdown/button mentioning کشور / Country / انتخاب کشور
+      const openedDropdown = await this.page.evaluate(() => {
+        const els = Array.from(document.querySelectorAll('button, [role="button"], [role="combobox"], div, span'));
+        const target = els.find((el) => {
+          const t = (el.innerText || '').trim();
+          return t.length > 0 && t.length < 40 && /^(کشور|انتخاب کشور|Country|Select country|\+\d{1,3})$/i.test(t);
+        });
+        if (target) {
+          target.click();
+          return true;
+        }
+        return false;
+      });
+      if (openedDropdown) {
+        await this.page.waitForTimeout(700);
+        if (await this._clickIranOptionIfVisible()) return true;
+      }
+    }
+
+    return false;
+  }
+
+  async _clickIranOptionIfVisible() {
+    // First, if there is a search input inside a country picker, type "ایران"
+    await this.page.evaluate(() => {
+      const searchInputs = Array.from(document.querySelectorAll('input[type="search"], input[placeholder*="جستجو"], input[placeholder*="کشور"], input[placeholder*="Search" i], input[placeholder*="Country" i]'));
+      for (const inp of searchInputs) {
+        const rect = inp.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          inp.focus();
+          break;
+        }
+      }
+    });
+
+    const clicked = await this.page.evaluate(() => {
+      const candidates = Array.from(
+        document.querySelectorAll('li, [role="option"], [role="listitem"], [role="menuitem"], button, div, span')
+      );
+      // Prefer elements that contain ایران or Iran or +98 and are reasonably compact (an option row, not the whole page)
+      const matches = candidates.filter((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0 || rect.height > 120) return false;
+        const txt = (el.innerText || '').trim();
+        if (!txt || txt.length > 60) return false;
+        return /(?:^|\s)(ایران|Iran)(?:\s|$|\(|（|\+98)/i.test(txt) || /\+98/.test(txt);
+      });
+      // Pick the most specific (smallest text / deepest) match
+      if (matches.length > 0) {
+        matches.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length);
+        matches[0].scrollIntoView({ block: 'center' });
+        matches[0].click();
+        return true;
+      }
+      return false;
+    });
+
+    if (clicked) {
+      await this.page.waitForTimeout(600);
+      return true;
+    }
+
+    // If not visible in current scroll, try typing "ایران" into active search box and clicking again
+    const hasSearch = await this.page.evaluate(() => {
+      const el = document.querySelector('input[type="search"], input[placeholder*="جستجو"], input[placeholder*="Search" i]');
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+
+    if (hasSearch) {
+      await this.page.keyboard.press('Control+A').catch(() => {});
+      await this.page.keyboard.type('ایران', { delay: 40 });
+      await this.page.waitForTimeout(700);
+      const clickedAfterSearch = await this.page.evaluate(() => {
+        const candidates = Array.from(document.querySelectorAll('li, [role="option"], [role="listitem"], button, div, span'));
+        const match = candidates.find((el) => {
+          const rect = el.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0 || rect.height > 120) return false;
+          const txt = (el.innerText || '').trim();
+          return txt.length > 0 && txt.length <= 60 && (/ایران/i.test(txt) || /\+98/.test(txt));
+        });
+        if (match) {
+          match.click();
+          return true;
+        }
+        return false;
+      });
+      if (clickedAfterSearch) {
+        await this.page.waitForTimeout(600);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Submits phone number on Bale Web login screen.
    */
   async submitPhoneNumber(phone) {
@@ -207,28 +360,65 @@ class BaleWebClient extends EventEmitter {
     if (!config.isValidIranMobile(norm)) {
       throw new Error('شماره موبایل معتبر وارد کنید (مثال: 09123456789).');
     }
-    // National format without leading 0 (e.g., 9123456789) and full format
+    // National format without leading 0 (e.g., 9365603574)
     const nationalNoZero = norm.slice(1);
 
     this.busy = true;
     try {
       await this.page.waitForTimeout(800);
-      const inputLocator = this.page.locator('input[type="tel"], input[type="text"], input[type="number"], input:not([type="hidden"])').first();
-      await inputLocator.waitFor({ state: 'visible', timeout: 10000 });
-      await inputLocator.click();
-      await inputLocator.fill('');
 
-      // Check if input already prefixes +98
+      // Step 1: Ensure Iran (+98) is selected if country picker/dropdown is present
+      await this._ensureIranSelectedInDom();
+      await this.page.waitForTimeout(500);
+
+      // Step 2: Locate the actual phone input (explicitly excluding country/search inputs)
+      const targetIndex = await this.page.evaluate(() => {
+        const inputs = Array.from(document.querySelectorAll('input:not([type="hidden"])'));
+        const visible = inputs
+          .map((el, idx) => ({ el, idx, rect: el.getBoundingClientRect() }))
+          .filter((item) => item.rect.width > 0 && item.rect.height > 0);
+
+        const isCountryOrSearch = (el) => {
+          const meta = `${el.placeholder || ''} ${el.getAttribute('aria-label') || ''} ${el.name || ''} ${el.id || ''} ${el.value || ''}`;
+          return /کشور|country|جستجو|search|ایران|iran/i.test(meta);
+        };
+
+        const nonCountry = visible.filter((item) => !isCountryOrSearch(item.el));
+        if (nonCountry.length === 0) return visible.length > 0 ? visible[visible.length - 1].idx : -1;
+
+        const telMatch = nonCountry.find((item) => {
+          const el = item.el;
+          const meta = `${el.type || ''} ${el.inputMode || ''} ${el.placeholder || ''} ${el.name || ''} ${el.getAttribute('aria-label') || ''}`;
+          return /tel|numeric|phone|mobile|شماره|موبایل|تلفن|9/i.test(meta);
+        });
+        return telMatch ? telMatch.idx : nonCountry[nonCountry.length - 1].idx;
+      });
+
+      if (targetIndex < 0) {
+        throw new Error('فیلد شماره موبایل در صفحه بله وب یافت نشد. لطفاً وضعیت صفحه را بررسی کنید.');
+      }
+
+      const inputLocator = this.page.locator('input:not([type="hidden"])').nth(targetIndex);
+      await inputLocator.click();
+      await this.page.waitForTimeout(200);
+
+      const pageHas98Prefix = await this.page.evaluate(() => /\+98|98/.test(document.body?.innerText || ''));
       const currentVal = await inputLocator.inputValue().catch(() => '');
+
+      await this.page.keyboard.press('Control+A').catch(() => {});
+      await this.page.keyboard.press('Backspace').catch(() => {});
+
       if (currentVal.includes('98')) {
-        await inputLocator.type(nationalNoZero, { delay: 60 });
+        await inputLocator.type(`+98${nationalNoZero}`, { delay: 50 });
+      } else if (pageHas98Prefix) {
+        await inputLocator.type(nationalNoZero, { delay: 50 });
       } else {
-        await inputLocator.fill(nationalNoZero);
+        await inputLocator.type(norm, { delay: 50 });
       }
 
       await this.page.waitForTimeout(500);
 
-      // Click next/submit button or press Enter
+      // Step 3: Click next/submit button or press Enter
       const clicked = await this.page.evaluate(() => {
         const btns = Array.from(document.querySelectorAll('button, [role="button"]'));
         const target = btns.find((b) => /ادامه|بعدی|ورود|ارسال|تایید|تأیید|next|submit|login/i.test(b.innerText || ''));
@@ -243,6 +433,10 @@ class BaleWebClient extends EventEmitter {
       }
 
       await this.page.waitForTimeout(3000);
+
+      // Step 4: If Bale still popped up a country list after submit, auto-select Iran once more
+      await this._clickIranOptionIfVisible();
+
       await this.refreshStatusAndScreenshot();
       return this.getState();
     } finally {

@@ -670,13 +670,14 @@
 
           <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
             <button type="button" class="btn btn-primary btn-sm" id="baleStartBrowserBtn">🚀 روشن کردن / بروزرسانی مرورگر بله وب</button>
+            <button type="button" class="btn btn-outline btn-sm" id="baleSelectIranBtn">🇮🇷 انتخاب خودکار ایران (+98)</button>
             <button type="button" class="btn btn-outline btn-sm" id="baleRefreshShotBtn">📸 تصویر لحظه‌ای صفحه بله</button>
             <button type="button" class="btn btn-danger btn-sm" id="baleLogoutBtn">خروج از حساب بله</button>
           </div>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:14px;">
             <form id="balePhoneForm" style="display:flex; gap:6px;">
-              <input type="tel" id="baleLoginPhoneInput" class="ltr" placeholder="شماره بله: 0912..." style="flex:1; padding:8px; border:1px solid var(--border-medium); border-radius:8px;" />
+              <input type="tel" id="baleLoginPhoneInput" class="ltr" value="09365603574" placeholder="شماره بله: 09365603574" style="flex:1; padding:8px; border:1px solid var(--border-medium); border-radius:8px;" />
               <button type="submit" class="btn btn-outline btn-sm">ارسال شماره</button>
             </form>
             <form id="baleOtpForm" style="display:flex; gap:6px;">
@@ -747,6 +748,16 @@
       try {
         showToast('در حال راه‌اندازی مرورگر بله وب...', 'info');
         await apiFetch('/api/outreach/bale/start', { method: 'POST' });
+        renderOutreachAdminTab(rootContainer);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('baleSelectIranBtn')?.addEventListener('click', async () => {
+      try {
+        showToast('در حال انتخاب ایران (+98) در صفحه بله وب...', 'info');
+        await apiFetch('/api/outreach/bale/select-iran', { method: 'POST' });
         renderOutreachAdminTab(rootContainer);
       } catch (err) {
         showToast(err.message, 'error');
