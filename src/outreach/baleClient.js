@@ -553,7 +553,8 @@ class BaleWebClient extends EventEmitter {
   async _openChatByPhone(normPhone, contactName = '') {
     const plusPhone = `+98${normPhone.slice(1)}`;
     const noZeroPhone = normPhone.slice(1);
-    const displayName = contactName || `مشاور ${normPhone}`;
+    const displayName = (contactName || `مشاور ${normPhone}`).trim();
+    const shortName = displayName.slice(0, 18).trim();
 
     // Step 0: Close any stray modal (e.g. "خدمات بازو") before navigating
     await this.page.keyboard.press('Escape').catch(() => {});
@@ -569,20 +570,49 @@ class BaleWebClient extends EventEmitter {
     });
     await this.page.waitForTimeout(350);
 
-    // Step 1: Click exact "مخاطبین" navigation item on the right rail
-    const contactsNav = this.page.getByText('مخاطبین', { exact: true }).first();
-    if ((await contactsNav.count()) > 0 && (await contactsNav.isVisible().catch(() => false))) {
-      await contactsNav.click().catch(() => {});
-      await this.page.waitForTimeout(1000);
-    }
+    // Helper: click a contact row strictly inside the right-side Contacts/Chat panel (not the far-right nav rail)
+    const clickSidebarContactRow = async (needles) => {
+      const coords = await this.page.evaluate((nList) => {
+        const vw = window.innerWidth;
+        const candidates = Array.from(
+          document.querySelectorAll('[role="listitem"], [class*="contact"], [class*="Contact"], [class*="chat"], [class*="Chat"], li, div')
+        );
+        const matches = candidates.filter((el) => {
+          const r = el.getBoundingClientRect();
+          // Must be inside the sidebar list area (not the far-right 75px rail, not the top 90px header)
+          if (r.width < 140 || r.height < 36 || r.height > 120) return false;
+          if (r.left < vw - 460 || r.right > vw - 70 || r.top < 95) return false;
+          const t = (el.innerText || '').trim();
+          if (!t || /افزودن مخاطب|ساخت گروه|ساخت کانال|نتیجه‌ای یافت نشد/i.test(t)) return false;
+          return nList.some((n) => n && t.includes(n));
+        });
+        if (matches.length === 0) return null;
+        // Prefer the tightest matching row element
+        matches.sort((a, b) => a.getBoundingClientRect().height - b.getBoundingClientRect().height);
+        const r = matches[0].getBoundingClientRect();
+        return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+      }, needles);
 
-    const shortName = displayName.slice(0, 18).trim();
-    const clickVisibleContactRow = async () => {
-      for (const needle of [normPhone, shortName]) {
-        if (!needle || needle.length < 3) continue;
-        const loc = this.page.getByText(needle, { exact: false }).first();
-        if ((await loc.count()) > 0 && (await loc.isVisible().catch(() => false))) {
-          await loc.click({ force: true }).catch(() => {});
+      if (coords) {
+        await this.page.mouse.click(coords.x, coords.y);
+        await this.page.waitForTimeout(1400);
+        if (await this._hasMessageComposer()) return true;
+
+        // If clicking opened a contact info card with "ارسال پیام" / "پیام" button, click it
+        const clickedSendMsgBtn = await this.page.evaluate(() => {
+          const els = Array.from(document.querySelectorAll('button, [role="button"], a, div, span'));
+          const btn = els.find((el) => {
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0 || r.height > 70) return false;
+            return /^(ارسال پیام|شروع گفتگو|پیام|Message|Send Message)$/i.test((el.innerText || '').trim());
+          });
+          if (btn) {
+            btn.click();
+            return true;
+          }
+          return false;
+        });
+        if (clickedSendMsgBtn) {
           await this.page.waitForTimeout(1200);
           if (await this._hasMessageComposer()) return true;
         }
@@ -590,113 +620,143 @@ class BaleWebClient extends EventEmitter {
       return false;
     };
 
-    // Check if contact is already visible at top of Contacts list
-    if (await clickVisibleContactRow()) return true;
+    // Helper: open Contacts search bar (clicks 🔍 in Contacts header if input isn't visible yet)
+    const searchInContacts = async (query) => {
+      let searchLoc = this.page
+        .locator('input[type="search"], input[placeholder*="جستجو"], input[aria-label*="جستجو"], input[placeholder*="Search" i]')
+        .last();
 
-    // Step 2: Inside Contacts (or main view), search for the phone number in any visible search input
-    const searchLoc = this.page
-      .locator('input[type="search"], input[placeholder*="جستجو"], input[aria-label*="جستجو"], input[placeholder*="Search" i]')
-      .last();
+      if ((await searchLoc.count()) === 0 || !(await searchLoc.isVisible().catch(() => false))) {
+        // Click the 🔍 icon in the Contacts header (top-right area, y < 90, x between vw-450 and vw-75)
+        const searchIconCoords = await this.page.evaluate(() => {
+          const vw = window.innerWidth;
+          const btns = Array.from(document.querySelectorAll('button, [role="button"], svg'));
+          const icon = btns.find((el) => {
+            const r = el.getBoundingClientRect();
+            return r.width > 12 && r.width < 60 && r.height > 12 && r.height < 60 && r.top < 90 && r.left > vw - 450 && r.left < vw - 75;
+          });
+          if (!icon) return null;
+          const r = icon.getBoundingClientRect();
+          return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+        });
+        if (searchIconCoords) {
+          await this.page.mouse.click(searchIconCoords.x, searchIconCoords.y);
+          await this.page.waitForTimeout(600);
+        }
+        searchLoc = this.page
+          .locator('input[type="search"], input[placeholder*="جستجو"], input[aria-label*="جستجو"], input[placeholder*="Search" i]')
+          .last();
+      }
 
-    if ((await searchLoc.count()) > 0 && (await searchLoc.isVisible().catch(() => false))) {
-      for (const q of [normPhone, plusPhone, noZeroPhone]) {
+      if ((await searchLoc.count()) > 0 && (await searchLoc.isVisible().catch(() => false))) {
         await searchLoc.click().catch(() => {});
         await this.page.keyboard.press('Control+A').catch(() => {});
         await this.page.keyboard.press('Backspace').catch(() => {});
-        await searchLoc.type(q, { delay: 35 }).catch(() => {});
+        await searchLoc.type(query, { delay: 35 }).catch(() => {});
         await this.page.waitForTimeout(1200);
-
-        if (await clickVisibleContactRow()) return true;
+        return true;
       }
+      return false;
+    };
 
-      // Clear search box before trying Add Contact
-      await searchLoc.click().catch(() => {});
-      await this.page.keyboard.press('Control+A').catch(() => {});
-      await this.page.keyboard.press('Backspace').catch(() => {});
-      await this.page.waitForTimeout(400);
+    // Rule Step 1: Open "مخاطبین" on the right rail and check if contact already exists
+    const contactsNav = this.page.getByText('مخاطبین', { exact: true }).first();
+    if ((await contactsNav.count()) > 0 && (await contactsNav.isVisible().catch(() => false))) {
+      await contactsNav.click().catch(() => {});
+      await this.page.waitForTimeout(1000);
     }
 
-    // Step 3: Click "افزودن مخاطب" (using getByText so it works whether it is a div, li, span, or button)
+    if (await clickSidebarContactRow([normPhone, shortName])) return true;
+
+    for (const q of [normPhone, shortName, noZeroPhone]) {
+      if (!q || q.length < 3) continue;
+      if (await searchInContacts(q)) {
+        if (await clickSidebarContactRow([normPhone, shortName, q])) return true;
+      }
+    }
+
+    // Clear search before adding new contact
+    await this.page.keyboard.press('Escape').catch(() => {});
+    await this.page.waitForTimeout(400);
+
+    // Re-ensure we're on Contacts tab
+    if ((await contactsNav.count()) > 0 && (await contactsNav.isVisible().catch(() => false))) {
+      await contactsNav.click().catch(() => {});
+      await this.page.waitForTimeout(800);
+    }
+
+    // Rule Step 1b: Save new contact via "افزودن مخاطب"
     const addContactLoc = this.page.getByText('افزودن مخاطب', { exact: true }).first();
     if ((await addContactLoc.count()) > 0 && (await addContactLoc.isVisible().catch(() => false))) {
       await addContactLoc.click().catch(() => {});
-    } else {
-      await this.page.evaluate(() => {
-        const els = Array.from(document.querySelectorAll('button, [role="button"], a, div, li, span'));
-        const addBtn = els.find((b) => {
-          const rect = b.getBoundingClientRect();
-          if (rect.width === 0 || rect.height === 0 || rect.height > 90) return false;
-          const txt = (b.innerText || '').trim();
-          const meta = `${txt} ${b.getAttribute('aria-label') || ''} ${b.getAttribute('title') || ''}`;
-          if (/خدمات|بازو|هوش مصنوعی|مجله|ربات|فروشگاه/i.test(meta)) return false;
-          return /^(افزودن مخاطب|مخاطب جدید|ایجاد مخاطب|Add Contact)$/i.test(txt);
-        });
-        if (addBtn) addBtn.click();
-      });
-    }
+      await this.page.waitForTimeout(900);
 
-    await this.page.waitForTimeout(900);
+      const modalInputs = await this.page
+        .locator('input:not([type="hidden"]):not([type="search"])')
+        .all();
 
-    // Step 4: Fill Add Contact form (Name + Phone) using real Playwright typing
-    const modalInputs = await this.page
-      .locator('input:not([type="hidden"]):not([type="search"])')
-      .all();
-
-    const visibleInputs = [];
-    for (const inp of modalInputs) {
-      if (await inp.isVisible().catch(() => false)) {
-        const meta = await inp
-          .evaluate((el) => `${el.placeholder || ''} ${el.getAttribute('aria-label') || ''} ${el.name || ''} ${el.type || ''} ${el.value || ''}`)
-          .catch(() => '');
-        visibleInputs.push({ inp, meta });
-      }
-    }
-
-    if (visibleInputs.length >= 2) {
-      // Find name input and phone input explicitly (skipping any country/98 input)
-      const nonCountry = visibleInputs.filter((x) => !/کشور|country|ایران|iran/i.test(x.meta));
-      const list = nonCountry.length >= 2 ? nonCountry : visibleInputs;
-
-      const nameItem =
-        list.find((x) => /نام|name/i.test(x.meta) && !/خانوادگی|last/i.test(x.meta)) || list[0];
-      const phoneItem =
-        list.find((x) => /tel|phone|mobile|شماره|موبایل|تلفن/i.test(x.meta)) || list[list.length - 1];
-
-      await nameItem.inp.click();
-      await this.page.keyboard.press('Control+A').catch(() => {});
-      await nameItem.inp.fill(displayName);
-
-      await phoneItem.inp.click();
-      await this.page.keyboard.press('Control+A').catch(() => {});
-      await this.page.keyboard.press('Backspace').catch(() => {});
-
-      const phoneVal = await phoneItem.inp.inputValue().catch(() => '');
-      const has98 = phoneVal.includes('98') || (await this.page.evaluate(() => /\+98/.test(document.body?.innerText || '')));
-      await phoneItem.inp.type(has98 ? noZeroPhone : normPhone, { delay: 40 });
-      await this.page.waitForTimeout(500);
-
-      const submitted = await this.page.evaluate(() => {
-        const btns = Array.from(document.querySelectorAll('button, [role="button"], div, span'));
-        const submit = btns.find((b) => {
-          const rect = b.getBoundingClientRect();
-          if (rect.width === 0 || rect.height === 0 || rect.height > 70) return false;
-          return /^(افزودن|ذخیره|تایید|تأیید|ایجاد|ثبت|ادامه|Save|Add|Create)$/i.test((b.innerText || '').trim());
-        });
-        if (submit) {
-          submit.click();
-          return true;
+      const visibleInputs = [];
+      for (const inp of modalInputs) {
+        if (await inp.isVisible().catch(() => false)) {
+          const meta = await inp
+            .evaluate((el) => `${el.placeholder || ''} ${el.getAttribute('aria-label') || ''} ${el.name || ''} ${el.type || ''} ${el.value || ''}`)
+            .catch(() => '');
+          visibleInputs.push({ inp, meta });
         }
-        return false;
-      });
-
-      if (!submitted) {
-        await this.page.keyboard.press('Enter').catch(() => {});
       }
-      await this.page.waitForTimeout(2000);
-      if (await this._hasMessageComposer()) return true;
 
-      // Click the newly added contact in the Contacts list using Playwright
-      if (await clickVisibleContactRow()) return true;
+      if (visibleInputs.length >= 2) {
+        const nonCountry = visibleInputs.filter((x) => !/کشور|country|ایران|iran/i.test(x.meta));
+        const list = nonCountry.length >= 2 ? nonCountry : visibleInputs;
+
+        const nameItem =
+          list.find((x) => /نام|name/i.test(x.meta) && !/خانوادگی|last/i.test(x.meta)) || list[0];
+        const phoneItem =
+          list.find((x) => /tel|phone|mobile|شماره|موبایل|تلفن/i.test(x.meta)) || list[list.length - 1];
+
+        await nameItem.inp.click();
+        await this.page.keyboard.press('Control+A').catch(() => {});
+        await nameItem.inp.fill(displayName);
+
+        await phoneItem.inp.click();
+        await this.page.keyboard.press('Control+A').catch(() => {});
+        await this.page.keyboard.press('Backspace').catch(() => {});
+
+        const phoneVal = await phoneItem.inp.inputValue().catch(() => '');
+        const has98 = phoneVal.includes('98') || (await this.page.evaluate(() => /\+98/.test(document.body?.innerText || '')));
+        await phoneItem.inp.type(has98 ? noZeroPhone : normPhone, { delay: 40 });
+        await this.page.waitForTimeout(500);
+
+        const submitted = await this.page.evaluate(() => {
+          const btns = Array.from(document.querySelectorAll('button, [role="button"], div, span'));
+          const submit = btns.find((b) => {
+            const rect = b.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0 || rect.height > 70) return false;
+            return /^(افزودن|ذخیره|تایید|تأیید|ایجاد|ثبت|ادامه|Save|Add|Create)$/i.test((b.innerText || '').trim());
+          });
+          if (submit) {
+            submit.click();
+            return true;
+          }
+          return false;
+        });
+
+        if (!submitted) {
+          await this.page.keyboard.press('Enter').catch(() => {});
+        }
+        await this.page.waitForTimeout(2000);
+        if (await this._hasMessageComposer()) return true;
+      }
+    }
+
+    // Rule Step 2: Search for the saved contact in Contacts list and click it
+    if (await clickSidebarContactRow([normPhone, shortName])) return true;
+
+    for (const q of [shortName, normPhone]) {
+      if (!q || q.length < 3) continue;
+      if (await searchInContacts(q)) {
+        if (await clickSidebarContactRow([normPhone, shortName, q])) return true;
+      }
     }
 
     return await this._hasMessageComposer();
