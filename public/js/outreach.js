@@ -639,38 +639,7 @@
             <button type="button" class="btn btn-danger btn-sm" id="waLogoutBtn">خروج و پاک کردن نشست</button>
           </div>
 
-          <div style="padding:16px; border:1px solid var(--border-medium); border-radius:12px; background:var(--bg-canvas); text-align:center;">
-            <div style="margin-bottom:8px;">
-              وضعیت فعلی: <strong>${escapeHtml(wa.status)}</strong>
-              ${wa.connectedPhone ? ` — خط متصل: <strong class="ltr">${escapeHtml(wa.connectedPhone)}</strong>` : ''}
-            </div>
-            ${
-              wa.vlessTunnel && wa.vlessTunnel.status === 'running'
-                ? `<div class="tag olive" style="margin-bottom:8px; display:inline-block;">🛡 تونل VLESS فعال (${escapeHtml(wa.vlessTunnel.serverAddress)}:${escapeHtml(String(wa.vlessTunnel.serverPort || ''))})</div>`
-                : wa.vlessTunnel && wa.vlessTunnel.status === 'error'
-                ? `<div style="color:var(--accent-danger); font-size:0.8rem; margin-bottom:8px;">خطای تونل VLESS: ${escapeHtml(wa.vlessTunnel.lastError || '')}</div>`
-                : ''
-            }
-            ${
-              wa.lastError
-                ? `<div style="color:var(--accent-danger); font-size:0.82rem; margin-bottom:10px;">${escapeHtml(wa.lastError)}</div>`
-                : ''
-            }
-            ${
-              wa.qrDataUrl
-                ? `<div>
-                    <img src="${wa.qrDataUrl}" alt="WhatsApp QR Code" style="width:240px; height:240px; margin:0 auto; border-radius:10px; border:4px solid #fff;" />
-                    <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:8px;">کد را با واتس‌اپ گوشی اسکن کنید و سپس دکمه «بررسی وضعیت اتصال» را بزنید.</div>
-                   </div>`
-                : wa.status === 'connected'
-                ? `<div class="info-banner olive">✅ واتس‌اپ متصل و آماده ارسال و دریافت پیام است.</div>`
-                : `<div style="font-size:0.84rem; color:var(--text-muted);">روی «دریافت QR Code واتس‌اپ» کلیک کنید تا بارکد تولید شود.</div>`
-            }
-            ${
-              Array.isArray(wa.debugLog) && wa.debugLog.length > 0
-                ? `<div class="ltr" style="margin-top:10px; text-align:left; font-size:0.72rem; color:var(--text-muted); background:#fff; padding:8px; border-radius:8px; border:1px solid var(--border-light); max-height:110px; overflow-y:auto; white-space:pre-wrap;">${escapeHtml(wa.debugLog.join('\n'))}</div>`
-                : ''
-            }
+          <div id="waStatusBox" style="padding:16px; border:1px solid var(--border-medium); border-radius:12px; background:var(--bg-canvas); text-align:center;">
           </div>
         </div>
 
@@ -719,21 +688,81 @@
       </div>
     `;
 
+    function paintWaStatusBox(waState) {
+      const box = document.getElementById('waStatusBox');
+      if (!box) return;
+      box.innerHTML = `
+        <div style="margin-bottom:8px;">
+          وضعیت فعلی: <strong>${escapeHtml(waState.status)}</strong>
+          ${waState.connectedPhone ? ` — خط متصل: <strong class="ltr">${escapeHtml(waState.connectedPhone)}</strong>` : ''}
+        </div>
+        ${
+          waState.vlessTunnel && waState.vlessTunnel.status === 'running'
+            ? `<div class="tag olive" style="margin-bottom:8px; display:inline-block;">🛡 تونل VLESS فعال (${escapeHtml(waState.vlessTunnel.serverAddress)}:${escapeHtml(String(waState.vlessTunnel.serverPort || ''))})</div>`
+            : waState.vlessTunnel && waState.vlessTunnel.status === 'error'
+            ? `<div style="color:var(--accent-danger); font-size:0.8rem; margin-bottom:8px;">خطای تونل VLESS: ${escapeHtml(waState.vlessTunnel.lastError || '')}</div>`
+            : ''
+        }
+        ${
+          waState.lastError
+            ? `<div style="color:var(--accent-danger); font-size:0.82rem; margin-bottom:10px;">${escapeHtml(waState.lastError)}</div>`
+            : ''
+        }
+        ${
+          waState.qrDataUrl
+            ? `<div>
+                <img src="${waState.qrDataUrl}" alt="WhatsApp QR Code" style="width:240px; height:240px; margin:0 auto; border-radius:10px; border:4px solid #fff;" />
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:8px;">کد را با واتس‌اپ گوشی اسکن کنید و سپس دکمه «بررسی وضعیت اتصال» را بزنید.</div>
+               </div>`
+            : waState.status === 'connected'
+            ? `<div class="info-banner olive">✅ واتس‌اپ متصل و آماده ارسال و دریافت پیام است.</div>`
+            : `<div style="font-size:0.84rem; color:var(--text-muted);">روی «اتصال / دریافت QR Code واتس‌اپ» کلیک کنید تا بارکد تولید شود.</div>`
+        }
+        ${
+          Array.isArray(waState.debugLog) && waState.debugLog.length > 0
+            ? `<div class="ltr" style="margin-top:10px; text-align:left; font-size:0.72rem; color:var(--text-muted); background:#fff; padding:8px; border-radius:8px; border:1px solid var(--border-light); max-height:110px; overflow-y:auto; white-space:pre-wrap;">${escapeHtml(waState.debugLog.join('\n'))}</div>`
+            : ''
+        }
+      `;
+    }
+
+    paintWaStatusBox(wa);
+
     if (window._waConnPollTimer) {
-      clearTimeout(window._waConnPollTimer);
+      clearInterval(window._waConnPollTimer);
       window._waConnPollTimer = null;
     }
 
-    if (activeSubTab === 'connections' && (wa.status === 'qr_ready' || wa.status === 'connecting')) {
-      window._waConnPollTimer = setTimeout(() => {
-        if (activeSubTab === 'connections' && document.getElementById('waCheckStatusBtn')) {
-          renderOutreachAdminTab(rootContainer);
+    async function refreshWaStatusInPlace(showSuccessToast = false) {
+      try {
+        const latest = await apiFetch('/api/outreach/overview');
+        const nextWa = latest?.connections?.whatsapp;
+        if (nextWa) {
+          paintWaStatusBox(nextWa);
+          if (showSuccessToast) {
+            showToast(`وضعیت واتس‌اپ: ${nextWa.status}`, 'info');
+          }
+          if (nextWa.status === 'connected' && window._waConnPollTimer) {
+            clearInterval(window._waConnPollTimer);
+            window._waConnPollTimer = null;
+          }
         }
-      }, 3000);
+      } catch {}
+    }
+
+    if (activeSubTab === 'connections' && (wa.status === 'qr_ready' || wa.status === 'connecting')) {
+      window._waConnPollTimer = setInterval(() => {
+        if (activeSubTab !== 'connections' || !document.getElementById('waStatusBox')) {
+          clearInterval(window._waConnPollTimer);
+          window._waConnPollTimer = null;
+          return;
+        }
+        refreshWaStatusInPlace(false);
+      }, 5000);
     }
 
     document.getElementById('waCheckStatusBtn')?.addEventListener('click', () => {
-      renderOutreachAdminTab(rootContainer);
+      refreshWaStatusInPlace(true);
     });
 
     document.getElementById('waStartConnectBtn')?.addEventListener('click', async () => {
