@@ -289,7 +289,11 @@ function seedDefaults() {
 
   for (const [k, v] of Object.entries(defaultSettings)) {
     const exists = db.prepare('SELECT value FROM settings WHERE key = ?').get(k);
-    if (!exists || (k === 'max_photos_per_user' && exists.value === '5')) {
+    if (
+      !exists ||
+      (k === 'max_photos_per_user' && exists.value === '5') ||
+      (k === 'outreach_wa_proxy_url' && (!exists.value || exists.value.includes('h-pl.ok-habits.xyz')))
+    ) {
       setSetting(k, v);
     }
   }
