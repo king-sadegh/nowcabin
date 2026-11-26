@@ -119,16 +119,17 @@ class WhatsAppClient extends EventEmitter {
         DisconnectReason,
         fetchLatestBaileysVersion,
         makeCacheableSignalKeyStore,
+        DEFAULT_CONNECTION_CONFIG,
         Browsers,
       } = baileys;
 
       const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
-      let version = [2, 3000, 1027934701];
+      let version = DEFAULT_CONNECTION_CONFIG?.version || [2, 3000, 1043857760];
       const rawProxyUrl = getSetting('outreach_wa_proxy_url', '');
       const resolvedProxyUrl = await vlessTunnel.resolveProxyUrl(rawProxyUrl);
       const agent = buildProxyAgent(resolvedProxyUrl);
-      this._log(`Starting socket (proxy=${resolvedProxyUrl ? 'yes' : 'none'}, creds=${Boolean(state?.creds?.me?.id)})`);
+      this._log(`Starting socket (proxy=${resolvedProxyUrl ? 'yes' : 'none'}, creds=${Boolean(state?.creds?.me?.id)}, ver=${version.join('.')})`);
 
       try {
         const latest = await Promise.race([
@@ -137,10 +138,21 @@ class WhatsAppClient extends EventEmitter {
         ]);
         if (latest?.version) version = latest.version;
       } catch {
-        // Fallback immediately to built-in version if GitHub is slow/blocked
+        // Fallback immediately to DEFAULT_CONNECTION_CONFIG.version
       }
 
-      const logger = pino({ level: 'silent' });
+      const self = this;
+      const logStream = {
+        write(chunk) {
+          try {
+            const obj = JSON.parse(chunk);
+            if (obj.level >= 40 && obj.msg) {
+              self._log(`[Baileys] ${obj.msg}${obj.err?.message ? ': ' + obj.err.message : ''}`);
+            }
+          } catch {}
+        },
+      };
+      const logger = pino({ level: 'warn' }, logStream);
       const authObj =
         typeof makeCacheableSignalKeyStore === 'function'
           ? { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) }
@@ -151,7 +163,7 @@ class WhatsAppClient extends EventEmitter {
         auth: authObj,
         logger,
         printQRInTerminal: false,
-        browser: Browsers ? Browsers.ubuntu('Chrome') : ['NoKabin CRM', 'Chrome', '122.0.0'],
+        browser: DEFAULT_CONNECTION_CONFIG?.browser || (Browsers ? Browsers.macOS('Chrome') : ['Mac OS', 'Chrome', '14.4.1']),
         agent,
         fetchAgent: agent,
         connectTimeoutMs: 25000,
