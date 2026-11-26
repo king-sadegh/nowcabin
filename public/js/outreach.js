@@ -630,7 +630,10 @@
 
           <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
             <button type="button" class="btn btn-primary btn-sm" id="waStartConnectBtn">
-              ${wa.status === 'connected' ? '🔄 بررسی وضعیت اتصال' : '📷 دریافت QR Code واتس‌اپ'}
+              📷 اتصال / دریافت QR Code واتس‌اپ
+            </button>
+            <button type="button" class="btn btn-gold btn-sm" id="waCheckStatusBtn">
+              🔄 بررسی وضعیت اتصال
             </button>
             <button type="button" class="btn btn-outline btn-sm" id="waRefreshQrBtn">تولید QR جدید</button>
             <button type="button" class="btn btn-danger btn-sm" id="waLogoutBtn">خروج و پاک کردن نشست</button>
@@ -710,6 +713,23 @@
         </div>
       </div>
     `;
+
+    if (window._waConnPollTimer) {
+      clearTimeout(window._waConnPollTimer);
+      window._waConnPollTimer = null;
+    }
+
+    if (activeSubTab === 'connections' && (wa.status === 'qr_ready' || wa.status === 'connecting')) {
+      window._waConnPollTimer = setTimeout(() => {
+        if (activeSubTab === 'connections' && document.getElementById('waCheckStatusBtn')) {
+          renderOutreachAdminTab(rootContainer);
+        }
+      }, 3000);
+    }
+
+    document.getElementById('waCheckStatusBtn')?.addEventListener('click', () => {
+      renderOutreachAdminTab(rootContainer);
+    });
 
     document.getElementById('waStartConnectBtn')?.addEventListener('click', async () => {
       try {

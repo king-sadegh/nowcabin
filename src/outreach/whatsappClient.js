@@ -170,11 +170,14 @@ class WhatsAppClient extends EventEmitter {
               fs.rmSync(AUTH_DIR, { recursive: true, force: true });
             } catch {}
           } else if (shouldReconnect) {
+            const isRestartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515;
             this.status = 'connecting';
-            this.lastError = `در حال اتصال مجدد (${errMessage})...`;
+            this.lastError = isRestartRequired
+              ? 'اسکن QR انجام شد؛ در حال تکمیل اتصال نهایی...'
+              : `در حال اتصال مجدد (${errMessage})...`;
             this.reconnectTimer = setTimeout(() => {
               this.start().catch(() => {});
-            }, 8000);
+            }, isRestartRequired ? 500 : 5000);
           } else {
             this.status = 'disconnected';
             if (errMessage) this.lastError = errMessage;
