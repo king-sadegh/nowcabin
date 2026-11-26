@@ -795,6 +795,76 @@
       }
     });
 
+    function paintProxyTestResult(res) {
+      const box = document.getElementById('proxyTestResultBox');
+      if (!box) return;
+      if (!res) {
+        box.innerHTML = '';
+        return;
+      }
+      if (res.whatsappReachable) {
+        box.innerHTML = `
+          <div class="info-banner olive" style="padding:10px; font-size:0.82rem;">
+            <div><strong>✅ پروکسی متصل و سالم است!</strong> (دسترسی به واتس‌اپ برقرار — پینگ: ${toPersianDigits(res.latencyMs || 0)} میلی‌ثانیه)</div>
+            <div style="margin-top:4px;">
+              🌍 کشور: <strong>${escapeHtml(res.country || 'نامشخص')}${res.countryCode ? ` (${escapeHtml(res.countryCode)})` : ''}</strong>
+              ${res.city ? ` — شهر: <strong>${escapeHtml(res.city)}</strong>` : ''}
+              | آی‌پی خروجی: <strong class="ltr">${escapeHtml(res.exitIp || '-')}</strong>
+              ${res.isp ? ` | ارائه‌دهنده: <span class="ltr">${escapeHtml(res.isp)}</span>` : ''}
+            </div>
+          </div>
+        `;
+      } else {
+        box.innerHTML = `
+          <div class="info-banner" style="padding:10px; font-size:0.82rem; border-color:#fca5a5; background:#fef2f2; color:#991b1b;">
+            <div><strong>❌ پروکسی به واتس‌اپ متصل نشد</strong></div>
+            ${res.exitIp ? `<div>🌍 کشور: ${escapeHtml(res.country || '-')} | آی‌پی: <span class="ltr">${escapeHtml(res.exitIp)}</span></div>` : ''}
+            ${res.error ? `<div class="ltr" style="margin-top:4px;">${escapeHtml(res.error)}</div>` : ''}
+          </div>
+        `;
+      }
+    }
+
+    if (wa.vlessTunnel?.lastTestResult) {
+      paintProxyTestResult(wa.vlessTunnel.lastTestResult);
+    }
+
+    document.getElementById('applyProxyBtn')?.addEventListener('click', async () => {
+      const proxyUrl = document.getElementById('waProxyInput').value.trim();
+      const box = document.getElementById('proxyTestResultBox');
+      if (box) box.innerHTML = `<div style="color:var(--text-secondary);">⏳ در حال اعمال پروکسی، بررسی آی‌پی/کشور و تست اتصال به واتس‌اپ...</div>`;
+      try {
+        const res = await apiFetch('/api/outreach/proxy/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ proxyUrl }),
+        });
+        paintProxyTestResult(res.testResult);
+        if (res.whatsapp) paintWaStatusBox(res.whatsapp);
+        showToast(res.message, res.testResult?.whatsappReachable ? 'success' : 'error');
+      } catch (err) {
+        if (box) box.innerHTML = `<div style="color:var(--accent-danger);">${escapeHtml(err.message)}</div>`;
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('testProxyBtn')?.addEventListener('click', async () => {
+      const proxyUrl = document.getElementById('waProxyInput').value.trim();
+      const box = document.getElementById('proxyTestResultBox');
+      if (box) box.innerHTML = `<div style="color:var(--text-secondary);">⏳ در حال تست پروکسی و دریافت کشور و آی‌پی...</div>`;
+      try {
+        const res = await apiFetch('/api/outreach/proxy/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ proxyUrl }),
+        });
+        paintProxyTestResult(res.testResult);
+      } catch (err) {
+        if (box) box.innerHTML = `<div style="color:var(--accent-danger);">${escapeHtml(err.message)}</div>`;
+        showToast(err.message, 'error');
+      }
+    });
+
     document.getElementById('waLogoutBtn')?.addEventListener('click', async () => {
       try {
         await apiFetch('/api/outreach/whatsapp/logout', { method: 'POST' });

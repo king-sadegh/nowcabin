@@ -620,8 +620,8 @@ class BaleWebClient extends EventEmitter {
       await this.page.waitForTimeout(400);
     }
 
-    // Step 3: Click "افزودن مخاطب" / "مخاطب جدید" / "+" button inside Contacts
-    const clickedAddBtn = await this.page.evaluate(() => {
+    // Step 3: Click explicit "افزودن مخاطب" / "مخاطب جدید" / "+" button inside Contacts (never click Services/Bazoo)
+    await this.page.evaluate(() => {
       const btns = Array.from(document.querySelectorAll('button, [role="button"], a'));
       const addBtn = btns.find((b) => {
         const rect = b.getBoundingClientRect();
@@ -630,30 +630,13 @@ class BaleWebClient extends EventEmitter {
         const aria = b.getAttribute('aria-label') || '';
         const title = b.getAttribute('title') || '';
         const meta = `${txt} ${aria} ${title}`;
-        if (/خدمات|هوش مصنوعی|مجله/i.test(meta)) return false;
+        if (/خدمات|بازو|هوش مصنوعی|مجله|ربات|فروشگاه/i.test(meta)) return false;
         return /افزودن مخاطب|مخاطب جدید|ایجاد مخاطب|add contact/i.test(meta) || txt === '+';
       });
       if (addBtn) {
         addBtn.click();
-        return true;
       }
-      return false;
     });
-
-    // If no explicit text button, try the circular '+' icon button at top-left/bottom-left of Contacts panel
-    if (!clickedAddBtn) {
-      await this.page.evaluate(() => {
-        const btns = Array.from(document.querySelectorAll('button, [role="button"]'));
-        const plusSvgBtn = btns.find((b) => {
-          const rect = b.getBoundingClientRect();
-          if (rect.width === 0 || rect.height === 0 || rect.width > 72 || rect.height > 72) return false;
-          // Exclude top-right rail & search icon; look for add/plus in aria/title/class or bottom FAB
-          const meta = `${b.getAttribute('aria-label') || ''} ${b.getAttribute('title') || ''} ${b.className || ''}`;
-          return /add|plus|new|contact|fab|افزودن/i.test(meta);
-        });
-        if (plusSvgBtn) plusSvgBtn.click();
-      });
-    }
 
     await this.page.waitForTimeout(900);
 

@@ -3,6 +3,7 @@ const config = require('../config');
 const { db } = require('../db');
 const { requireRole } = require('../auth');
 const { outreachManager } = require('../outreach/outreachManager');
+const { vlessTunnel } = require('../outreach/vlessTunnel');
 const { evaluateAgentReply, renderCampaignTemplate } = require('../outreach/ruleEngine');
 
 const router = express.Router();
@@ -327,6 +328,43 @@ router.post('/whatsapp/disconnect', async (_req, res) => {
 router.post('/whatsapp/logout', async (_req, res) => {
   const state = await outreachManager.wa.logout();
   res.json({ ok: true, whatsapp: state });
+});
+
+router.post('/proxy/apply', async (req, res) => {
+  try {
+    const proxyUrl = String(req.body?.proxyUrl || '').trim();
+    outreachManager.updateOutreachSettings({ waProxyUrl: proxyUrl });
+    const testResult = await vlessTunnel.testProxy(proxyUrl);
+
+    if (outreachManager.wa.status !== 'disconnected') {
+      await outreachManager.wa.stop();
+    }
+    const waState = await outreachManager.wa.start({ forceNewQr: false });
+
+    res.json({
+      ok: true,
+      testResult,
+      whatsapp: waState,
+      message: testResult.whatsappReachable
+        ? 'پروکسی اعمال شد و دسترسی به واتس‌اپ برقرار است!'
+        : 'پروکسی ذخیره شد اما تست دسترسی به واتس‌اپ با خطا مواجه شد.',
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'خطا در اعمال پروکسی' });
+  }
+});
+
+router.post('/proxy/test', async (req, res) => {
+  try {
+    const proxyUrl =
+      req.body?.proxyUrl !== undefined
+        ? String(req.body.proxyUrl).trim()
+        : outreachManager.getOutreachSettings().waProxyUrl;
+    const testResult = await vlessTunnel.testProxy(proxyUrl);
+    res.json({ ok: true, testResult, vlessTunnel: vlessTunnel.getState() });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'خطا در تست پروکسی' });
+  }
 });
 
 // 11. Bale Web Connection Controls

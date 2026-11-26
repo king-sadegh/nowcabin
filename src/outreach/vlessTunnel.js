@@ -1,7 +1,11 @@
 const fs = require('fs');
 const net = require('net');
 const path = require('path');
+const http = require('http');
+const https = require('https');
 const { spawn } = require('child_process');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+const { SocksProxyAgent } = require('socks-proxy-agent');
 const config = require('../config');
 
 const LOCAL_SOCKS_PORT = 10808;
@@ -20,49 +24,14 @@ function findXrayBinary() {
   return 'xray';
 }
 
-/**
- * Parses a standard vless://URI into an Xray-core JSON configuration
- * exposing a local SOCKS5 proxy at 127.0.0.1:10808.
- */
-function parseVlessUriToXrayConfig(vlessUri, localPort = LOCAL_SOCKS_PORT) {
-  const raw = String(vlessUri || '').trim();
-  if (!raw.toLowerCase().startsWith('vless://')) {
-    throw new Error('لینک پروکسی باید با vless:// شروع شود.');
-  }
-
-  let parsed;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    throw new Error('فرمت لینک VLESS معتبر نیست.');
-  }
-
-  const uuid = decodeURIComponent(parsed.username || '').trim();
-  const address = parsed.hostname;
-  const port = Number(parsed.port || 443);
-  const params = parsed.searchParams;
-
-  if (!uuid || !address || !port) {
-    throw new Error('لینک VLESS ناقص است (UUID، آدرس سرور یا پورت یافت نشد).');
-  }
-
+function buildStreamSettings(params, address, defaultSecurity = 'none') {
   const network = (params.get('type') || 'tcp').toLowerCase();
-  const security = (params.get('security') || 'none').toLowerCase();
-  const encryption = params.get('encryption') || 'none';
-  const flow = params.get('flow') || '';
+  const security = (params.get('security') || defaultSecurity).toLowerCase();
   const hostHeader = params.get('host') || '';
   const sni = params.get('sni') || hostHeader || address;
   const fp = params.get('fp') || '';
   const alpnRaw = params.get('alpn') || '';
   const allowInsecure = params.get('allowInsecure') === '1' || params.get('insecure') === '1';
-
-  const userObj = {
-    id: uuid,
-    encryption,
-  };
-  if (flow) {
-    userObj.flow = flow;
-  }
 
   const streamSettings = {
     network,
@@ -87,7 +56,7 @@ function parseVlessUriToXrayConfig(vlessUri, localPort = LOCAL_SOCKS_PORT) {
     const sid = params.get('sid') || '';
     const spx = params.get('spx') || '/';
     if (!pbk) {
-      throw new Error('لینک VLESS Reality فاقد پارامتر pbk (Public Key) است.');
+      throw new Error('لینک Reality فاقد پارامتر pbk (Public Key) است.');
     }
     streamSettings.realitySettings = {
       serverName: sni,
@@ -136,12 +105,74 @@ function parseVlessUriToXrayConfig(vlessUri, localPort = LOCAL_SOCKS_PORT) {
     };
   }
 
+  return streamSettings;
+}
+
+/**
+ * Parses a standard vless:// or trojan:// URI into an Xray-core JSON configuration
+ * exposing a local SOCKS5 proxy at 127.0.0.1:10808.
+ */
+function parseProxyUriToXrayConfig(uri, localPort = LOCAL_SOCKS_PORT) {
+  const raw = String(uri || '').trim();
+  const lower = raw.toLowerCase();
+  const isVless = lower.startsWith('vless://');
+  const isTrojan = lower.startsWith('trojan://');
+
+  if (!isVless && !isTrojan) {
+    throw new Error('لینک پروکسی باید با vless:// یا trojan:// شروع شود.');
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error('فرمت لینک پروکسی معتبر نیست.');
+  }
+
+  const secret = decodeURIComponent(parsed.username || '').trim();
+  const address = parsed.hostname;
+  const port = Number(parsed.port || 443);
+  const params = parsed.searchParams;
+
+  if (!secret || !address || !port) {
+    throw new Error('لینک پروکسی ناقص است (شناسه/رمز، آدرس سرور یا پورت یافت نشد).');
+  }
+
+  const streamSettings = buildStreamSettings(params, address, isTrojan ? 'tls' : 'none');
+
+  let outbound;
+  if (isVless) {
+    const encryption = params.get('encryption') || 'none';
+    const flow = params.get('flow') || '';
+    const userObj = { id: secret, encryption };
+    if (flow) userObj.flow = flow;
+
+    outbound = {
+      tag: 'proxy-out',
+      protocol: 'vless',
+      settings: {
+        vnext: [{ address, port, users: [userObj] }],
+      },
+      streamSettings,
+    };
+  } else {
+    outbound = {
+      tag: 'proxy-out',
+      protocol: 'trojan',
+      settings: {
+        servers: [{ address, port, password: secret }],
+      },
+      streamSettings,
+    };
+  }
+
   return {
     meta: {
+      protocol: isVless ? 'vless' : 'trojan',
       address,
       port,
-      network,
-      security,
+      network: streamSettings.network,
+      security: streamSettings.security,
       remark: decodeURIComponent((parsed.hash || '').replace(/^#/, '')),
     },
     xrayConfig: {
@@ -159,20 +190,7 @@ function parseVlessUriToXrayConfig(vlessUri, localPort = LOCAL_SOCKS_PORT) {
         },
       ],
       outbounds: [
-        {
-          tag: 'vless-out',
-          protocol: 'vless',
-          settings: {
-            vnext: [
-              {
-                address,
-                port,
-                users: [userObj],
-              },
-            ],
-          },
-          streamSettings,
-        },
+        outbound,
         {
           tag: 'direct',
           protocol: 'freedom',
@@ -182,7 +200,7 @@ function parseVlessUriToXrayConfig(vlessUri, localPort = LOCAL_SOCKS_PORT) {
   };
 }
 
-function waitForPort(port, host = '127.0.0.1', timeoutMs = 4000) {
+function waitForPort(port, host = '127.0.0.1', timeoutMs = 4500) {
   const started = Date.now();
   return new Promise((resolve, reject) => {
     const tryConnect = () => {
@@ -204,6 +222,39 @@ function waitForPort(port, host = '127.0.0.1', timeoutMs = 4000) {
   });
 }
 
+function requestWithAgent(targetUrl, agent, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(targetUrl);
+    const lib = parsed.protocol === 'https:' ? https : http;
+    const req = lib.request(
+      targetUrl,
+      {
+        method: 'GET',
+        agent,
+        timeout: timeoutMs,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          Accept: 'application/json, text/html, */*',
+        },
+      },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk) => {
+          if (body.length < 16384) body += chunk.toString('utf8');
+        });
+        res.on('end', () => {
+          resolve({ statusCode: res.statusCode || 0, body });
+        });
+      }
+    );
+    req.on('timeout', () => {
+      req.destroy(new Error('Request timed out'));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
 class VlessTunnelManager {
   constructor() {
     this.proc = null;
@@ -211,17 +262,20 @@ class VlessTunnelManager {
     this.status = 'stopped'; // stopped | starting | running | error
     this.meta = null;
     this.lastError = '';
+    this.lastTestResult = null;
   }
 
   getState() {
     return {
       status: this.status,
       localProxyUrl: this.status === 'running' ? `socks5://127.0.0.1:${LOCAL_SOCKS_PORT}` : '',
+      protocol: this.meta?.protocol || '',
       serverAddress: this.meta?.address || '',
       serverPort: this.meta?.port || null,
       security: this.meta?.security || '',
       network: this.meta?.network || '',
       lastError: this.lastError,
+      lastTestResult: this.lastTestResult,
     };
   }
 
@@ -241,7 +295,7 @@ class VlessTunnelManager {
    * Resolves any user-provided proxy string:
    * - empty -> stops tunnel and returns ''
    * - socks5:// or http:// or https:// -> stops tunnel and returns as-is
-   * - vless:// -> starts local Xray SOCKS5 tunnel and returns socks5://127.0.0.1:10808
+   * - vless:// or trojan:// -> starts local Xray SOCKS5 tunnel and returns socks5://127.0.0.1:10808
    */
   async resolveProxyUrl(rawProxy) {
     const val = String(rawProxy || '').trim();
@@ -250,7 +304,8 @@ class VlessTunnelManager {
       return '';
     }
 
-    if (!val.toLowerCase().startsWith('vless://')) {
+    const lower = val.toLowerCase();
+    if (!lower.startsWith('vless://') && !lower.startsWith('trojan://')) {
       await this.stop();
       return val;
     }
@@ -263,7 +318,7 @@ class VlessTunnelManager {
     this.status = 'starting';
     this.lastError = '';
 
-    const { meta, xrayConfig } = parseVlessUriToXrayConfig(val, LOCAL_SOCKS_PORT);
+    const { meta, xrayConfig } = parseProxyUriToXrayConfig(val, LOCAL_SOCKS_PORT);
     this.meta = meta;
 
     fs.mkdirSync(config.DATA_DIR, { recursive: true });
@@ -309,8 +364,79 @@ class VlessTunnelManager {
     } catch (err) {
       this.status = 'error';
       this.lastError = stderrBuf.trim() || err.message;
-      throw new Error(`خطا در راه‌اندازی تونل VLESS: ${this.lastError}`);
+      throw new Error(`خطا در راه‌اندازی تونل پروکسی: ${this.lastError}`);
     }
+  }
+
+  /**
+   * Tests the active/provided proxy by checking:
+   * 1. Exit IP, Country, City, ISP
+   * 2. Reachability & latency to web.whatsapp.com
+   */
+  async testProxy(rawProxy) {
+    const resolved = await this.resolveProxyUrl(rawProxy);
+    const agent = resolved
+      ? resolved.startsWith('socks')
+        ? new SocksProxyAgent(resolved)
+        : new HttpsProxyAgent(resolved)
+      : undefined;
+
+    const result = {
+      ok: false,
+      testedAt: new Date().toISOString(),
+      hasProxy: Boolean(resolved),
+      exitIp: '',
+      country: '',
+      countryCode: '',
+      city: '',
+      isp: '',
+      whatsappReachable: false,
+      whatsappStatus: 0,
+      latencyMs: null,
+      error: '',
+    };
+
+    try {
+      const t0 = Date.now();
+      // Check exit IP & country via ip-api.com (fast JSON) with fallback to ipapi.co
+      try {
+        const ipRes = await requestWithAgent(
+          'http://ip-api.com/json/?fields=status,country,countryCode,city,isp,query',
+          agent,
+          8000
+        );
+        const parsed = JSON.parse(ipRes.body || '{}');
+        if (parsed.status === 'success') {
+          result.exitIp = parsed.query || '';
+          result.country = parsed.country || '';
+          result.countryCode = parsed.countryCode || '';
+          result.city = parsed.city || '';
+          result.isp = parsed.isp || '';
+        }
+      } catch {
+        try {
+          const ipRes2 = await requestWithAgent('https://ipapi.co/json/', agent, 8000);
+          const parsed2 = JSON.parse(ipRes2.body || '{}');
+          result.exitIp = parsed2.ip || '';
+          result.country = parsed2.country_name || '';
+          result.countryCode = parsed2.country_code || '';
+          result.city = parsed2.city || '';
+          result.isp = parsed2.org || '';
+        } catch {}
+      }
+
+      // Check web.whatsapp.com reachability through the proxy
+      const waRes = await requestWithAgent('https://web.whatsapp.com/', agent, 9000);
+      result.latencyMs = Date.now() - t0;
+      result.whatsappStatus = waRes.statusCode;
+      result.whatsappReachable = waRes.statusCode >= 200 && waRes.statusCode < 500;
+      result.ok = result.whatsappReachable;
+    } catch (err) {
+      result.error = err.message || 'خطا در تست اتصال پروکسی';
+    }
+
+    this.lastTestResult = result;
+    return result;
   }
 }
 
@@ -318,5 +444,6 @@ const vlessTunnel = new VlessTunnelManager();
 
 module.exports = {
   vlessTunnel,
-  parseVlessUriToXrayConfig,
+  parseProxyUriToXrayConfig,
+  parseVlessUriToXrayConfig: parseProxyUriToXrayConfig,
 };

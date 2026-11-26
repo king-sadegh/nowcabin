@@ -61,12 +61,23 @@ class OutreachManager {
   }
 
   init() {
-    // Auto-resume WhatsApp session if credentials already exist on disk
     const waCreds = path.join(config.DATA_DIR, 'wa_auth', 'creds.json');
+    const baleProfileDir = path.join(config.DATA_DIR, 'bale_profile');
+
+    // Auto-resume WhatsApp session if credentials already exist on disk
     if (fs.existsSync(waCreds)) {
       this.wa.start().catch((err) => {
         console.error('[Outreach] Auto-start WhatsApp error:', err.message);
       });
+    }
+
+    // Auto-resume Bale Web browser if profile already exists on disk
+    if (fs.existsSync(baleProfileDir)) {
+      setTimeout(() => {
+        this.bale.start().catch((err) => {
+          console.error('[Outreach] Auto-start Bale error:', err.message);
+        });
+      }, 2000);
     }
 
     if (this.schedulerTimer) clearInterval(this.schedulerTimer);
@@ -75,6 +86,17 @@ class OutreachManager {
         console.error('[Outreach] Scheduler tick error:', err.message);
       });
     }, 10000);
+
+    // 60s Keep-Alive Watchdog: keeps both WhatsApp and Bale running permanently without manual login
+    if (this.watchdogTimer) clearInterval(this.watchdogTimer);
+    this.watchdogTimer = setInterval(() => {
+      if (fs.existsSync(waCreds) && this.wa.status === 'disconnected' && !this.wa.manualStop) {
+        this.wa.start().catch(() => {});
+      }
+      if (fs.existsSync(baleProfileDir) && (this.bale.status === 'disconnected' || this.bale.status === 'error')) {
+        this.bale.start().catch(() => {});
+      }
+    }, 60000);
   }
 
   _bindEvents() {
