@@ -624,8 +624,8 @@
           </p>
 
           <div class="field" style="margin-bottom:12px;">
-            <label>پروکسی واتس‌اپ (مخصوص سرور ایران — HTTP یا SOCKS5، در صورت نیاز)</label>
-            <input type="text" id="waProxyInput" class="ltr" value="${escapeHtml(wa.proxyUrl || '')}" placeholder="socks5://127.0.0.1:1080 یا http://user:pass@ip:port" />
+            <label>پروکسی واتس‌اپ (مخصوص سرور ایران — لینک مستقیم <code>vless://...</code> یا <code>socks5://</code> / <code>http://</code>)</label>
+            <input type="text" id="waProxyInput" class="ltr" value="${escapeHtml(wa.proxyUrl || '')}" placeholder="vless://uuid@server:port?security=reality&... یا socks5://127.0.0.1:10808" />
           </div>
 
           <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
@@ -641,6 +641,13 @@
               وضعیت فعلی: <strong>${escapeHtml(wa.status)}</strong>
               ${wa.connectedPhone ? ` — خط متصل: <strong class="ltr">${escapeHtml(wa.connectedPhone)}</strong>` : ''}
             </div>
+            ${
+              wa.vlessTunnel && wa.vlessTunnel.status === 'running'
+                ? `<div class="tag olive" style="margin-bottom:8px; display:inline-block;">🛡 تونل VLESS فعال (${escapeHtml(wa.vlessTunnel.serverAddress)}:${escapeHtml(String(wa.vlessTunnel.serverPort || ''))})</div>`
+                : wa.vlessTunnel && wa.vlessTunnel.status === 'error'
+                ? `<div style="color:var(--accent-danger); font-size:0.8rem; margin-bottom:8px;">خطای تونل VLESS: ${escapeHtml(wa.vlessTunnel.lastError || '')}</div>`
+                : ''
+            }
             ${
               wa.lastError
                 ? `<div style="color:var(--accent-danger); font-size:0.82rem; margin-bottom:10px;">${escapeHtml(wa.lastError)}</div>`

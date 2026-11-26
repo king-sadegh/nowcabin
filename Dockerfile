@@ -16,6 +16,20 @@ RUN set -e; \
     apt-get $APT_OPTS install -y --no-install-recommends chromium && \
     rm -rf /var/lib/apt/lists/*
 
+# Layer 3: Xray-core for direct vless:// WhatsApp proxy support
+RUN set -e; \
+    APT_OPTS="-o Acquire::ForceIPv4=true -o Acquire::http::Timeout=30 -o Acquire::Retries=5"; \
+    apt-get $APT_OPTS update && \
+    apt-get $APT_OPTS install -y --no-install-recommends curl unzip ca-certificates && \
+    rm -rf /var/lib/apt/lists/* && \
+    ARCH=$(uname -m); \
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then XRAY_FILE="Xray-linux-arm64-v8a.zip"; else XRAY_FILE="Xray-linux-64.zip"; fi; \
+    curl -fL --retry 3 --connect-timeout 20 -o /tmp/xray.zip "https://github.com/XTLS/Xray-core/releases/latest/download/${XRAY_FILE}" && \
+    unzip -o /tmp/xray.zip xray -d /usr/local/bin && \
+    chmod +x /usr/local/bin/xray && \
+    rm -f /tmp/xray.zip && \
+    xray version
+
 ENV CHROME_PATH=/usr/bin/chromium
 
 # Create persistent directories

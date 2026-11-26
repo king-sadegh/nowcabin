@@ -7,6 +7,7 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 const { SocksProxyAgent } = require('socks-proxy-agent');
 const config = require('../config');
 const { getSetting } = require('../db');
+const { vlessTunnel } = require('./vlessTunnel');
 
 const AUTH_DIR = path.join(config.DATA_DIR, 'wa_auth');
 
@@ -64,6 +65,7 @@ class WhatsAppClient extends EventEmitter {
       lastError: this.lastError,
       hasSavedSession,
       proxyUrl: getSetting('outreach_wa_proxy_url', ''),
+      vlessTunnel: vlessTunnel.getState(),
     };
   }
 
@@ -94,8 +96,9 @@ class WhatsAppClient extends EventEmitter {
       const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
       let version = [2, 3000, 1019707846];
-      const proxyUrl = getSetting('outreach_wa_proxy_url', '');
-      const agent = buildProxyAgent(proxyUrl);
+      const rawProxyUrl = getSetting('outreach_wa_proxy_url', '');
+      const resolvedProxyUrl = await vlessTunnel.resolveProxyUrl(rawProxyUrl);
+      const agent = buildProxyAgent(resolvedProxyUrl);
 
       try {
         const latest = await fetchLatestBaileysVersion(agent ? { agent } : undefined);

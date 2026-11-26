@@ -303,11 +303,20 @@ router.patch('/settings', (req, res) => {
 
 // 10. WhatsApp Connection Controls
 router.post('/whatsapp/connect', async (req, res) => {
-  if (req.body?.proxyUrl !== undefined) {
-    outreachManager.updateOutreachSettings({ waProxyUrl: String(req.body.proxyUrl).trim() });
+  try {
+    if (req.body?.proxyUrl !== undefined) {
+      const prevProxy = outreachManager.getOutreachSettings().waProxyUrl;
+      const nextProxy = String(req.body.proxyUrl).trim();
+      outreachManager.updateOutreachSettings({ waProxyUrl: nextProxy });
+      if (prevProxy !== nextProxy && outreachManager.wa.status !== 'disconnected') {
+        await outreachManager.wa.stop();
+      }
+    }
+    const state = await outreachManager.wa.start({ forceNewQr: Boolean(req.body?.forceNewQr) });
+    res.json({ ok: true, whatsapp: state });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'خطا در اتصال واتس‌اپ' });
   }
-  const state = await outreachManager.wa.start({ forceNewQr: Boolean(req.body?.forceNewQr) });
-  res.json({ ok: true, whatsapp: state });
 });
 
 router.post('/whatsapp/disconnect', async (_req, res) => {
