@@ -166,9 +166,10 @@ class WhatsAppClient extends EventEmitter {
         browser: DEFAULT_CONNECTION_CONFIG?.browser || (Browsers ? Browsers.macOS('Chrome') : ['Mac OS', 'Chrome', '14.4.1']),
         agent,
         fetchAgent: agent,
-        connectTimeoutMs: 25000,
-        defaultQueryTimeoutMs: 25000,
+        connectTimeoutMs: 45000,
+        defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 25000,
+        retryRequestDelayMs: 500,
         markOnlineOnConnect: false,
         syncFullHistory: false,
       });
@@ -181,6 +182,7 @@ class WhatsAppClient extends EventEmitter {
         this._log(`connection.update: conn=${connection || '-'} qr=${Boolean(qr)}`);
 
         if (qr) {
+          this.consecutive428Count = 0;
           this.qrText = qr;
           this.status = 'qr_ready';
           try {
@@ -191,6 +193,7 @@ class WhatsAppClient extends EventEmitter {
         }
 
         if (connection === 'open') {
+          this.consecutive428Count = 0;
           this.status = 'connected';
           this.qrText = '';
           this.qrDataUrl = '';
@@ -214,6 +217,7 @@ class WhatsAppClient extends EventEmitter {
           this.qrDataUrl = '';
 
           if (statusCode === DisconnectReason.loggedOut) {
+            this.consecutive428Count = 0;
             this.status = 'disconnected';
             this.connectedPhone = '';
             this.connectedName = '';
@@ -223,6 +227,20 @@ class WhatsAppClient extends EventEmitter {
             } catch {}
           } else if (shouldReconnect) {
             const isRestartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515;
+            if (statusCode === 428) {
+              this.consecutive428Count = (this.consecutive428Count || 0) + 1;
+            } else if (isRestartRequired) {
+              this.consecutive428Count = 0;
+            }
+
+            if (this.consecutive428Count >= 4) {
+              this.status = 'error';
+              this.lastError =
+                'اتصال نهایی با نشست قبلی تایم‌اوت شد (کد 428). یک بار دکمه «تولید QR جدید» را بزنید و دوباره اسکن کنید (یا در صورت تکرار، لینک VLESS سریع‌تری تست کنید).';
+              this.consecutive428Count = 0;
+              return;
+            }
+
             this.status = 'connecting';
             this.connectingSince = Date.now();
             this.lastError = isRestartRequired

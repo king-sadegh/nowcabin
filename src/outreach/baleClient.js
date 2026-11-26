@@ -537,7 +537,8 @@ class BaleWebClient extends EventEmitter {
     try {
       const opened = await this._openChatByPhone(norm, contactName);
       if (!opened) {
-        throw new Error(`امکان باز کردن گفتگو برای شماره ${norm} در بله وب فراهم نشد (ممکن است شماره در بله عضو نباشد).`);
+        await this.refreshStatusAndScreenshot();
+        throw new Error(`امکان باز کردن گفتگو برای شماره ${norm} در بله وب فراهم نشد (تصویر لحظه‌ای صفحه بله در پنل بروزرسانی شد).`);
       }
 
       await this._typeAndSendInOpenChat(text);
@@ -551,95 +552,156 @@ class BaleWebClient extends EventEmitter {
 
   async _openChatByPhone(normPhone, contactName = '') {
     const plusPhone = `+98${normPhone.slice(1)}`;
+    const noZeroPhone = normPhone.slice(1);
     const displayName = contactName || `مشاور ${normPhone}`;
 
     // Strategy 1: Search in Bale search bar for the phone number
-    const searchOpened = await this.page.evaluate((queries) => {
-      const inputs = Array.from(document.querySelectorAll('input[type="search"], input[type="text"], input'));
-      const searchInput = inputs.find((el) => /جستجو|search/i.test((el.placeholder || '') + ' ' + (el.getAttribute('aria-label') || '')));
-      if (searchInput) {
-        searchInput.focus();
-        searchInput.click();
-        return true;
-      }
-      return false;
-    }, [normPhone, plusPhone]);
+    const searchInputLoc = this.page
+      .locator('input[type="search"], input[placeholder*="جستجو"], input[aria-label*="جستجو"], input[placeholder*="Search" i]')
+      .first();
 
-    if (searchOpened) {
+    if ((await searchInputLoc.count()) > 0) {
+      for (const query of [normPhone, plusPhone]) {
+        await searchInputLoc.click().catch(() => {});
+        await this.page.keyboard.press('Control+A').catch(() => {});
+        await this.page.keyboard.press('Backspace').catch(() => {});
+        await searchInputLoc.type(query, { delay: 40 }).catch(() => {});
+        await this.page.waitForTimeout(1800);
+
+        const clickedResult = await this.page.evaluate((qList) => {
+          const items = Array.from(
+            document.querySelectorAll('[role="listitem"], [class*="chat-item"], [class*="ChatItem"], [class*="contact"], [class*="search"] li, [class*="Search"] div')
+          );
+          const valid = items.find((el) => {
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0 || rect.height > 120) return false;
+            const t = (el.innerText || '').trim();
+            if (!t || /نتیجه‌ای یافت نشد|یافت نشد|پیامی یافت نشد/i.test(t)) return false;
+            return qList.some((q) => t.includes(q)) || /گفتگو|مخاطب|مشاور/i.test(t);
+          });
+          if (valid) {
+            valid.click();
+            return true;
+          }
+          return false;
+        }, [normPhone, plusPhone, noZeroPhone]);
+
+        if (clickedResult) {
+          await this.page.waitForTimeout(1200);
+          if (await this._hasMessageComposer()) return true;
+        }
+      }
+
+      // Clear search box before moving to Strategy 2
+      await searchInputLoc.click().catch(() => {});
       await this.page.keyboard.press('Control+A').catch(() => {});
       await this.page.keyboard.press('Backspace').catch(() => {});
-      await this.page.keyboard.type(normPhone, { delay: 45 });
-      await this.page.waitForTimeout(1800);
+      await this.page.keyboard.press('Escape').catch(() => {});
+      await this.page.waitForTimeout(400);
+    }
 
-      const clickedSearchResult = await this.page.evaluate(() => {
-        const items = Array.from(
-          document.querySelectorAll('[role="listitem"], [class*="chat-item"], [class*="ChatItem"], [class*="contact"], [class*="result"]')
-        );
-        const valid = items.find((el) => {
-          const t = (el.innerText || '').trim();
-          return t.length > 0 && !/نتیجه‌ای یافت نشد|یافت نشد/i.test(t);
+    // Strategy 2: Open Contacts (directly, or via Hamburger Menu / Floating Action Button)
+    const openContactsModal = async () => {
+      return await this.page.evaluate(() => {
+        const els = Array.from(document.querySelectorAll('button, a, div[role="button"], li, span'));
+        const contactBtn = els.find((el) => {
+          const rect = el.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return false;
+          const txt = (el.innerText || '').trim();
+          const aria = el.getAttribute('aria-label') || '';
+          const title = el.getAttribute('title') || '';
+          return (
+            /^(مخاطبین|مخاطب جدید|افزودن مخاطب|گفتگوی جدید|Contacts|New Chat)$/i.test(txt) ||
+            /مخاطب|گفتگوی جدید/i.test(aria) ||
+            /contact|new chat/i.test(title)
+          );
         });
-        if (valid) {
-          valid.click();
+        if (contactBtn) {
+          contactBtn.click();
           return true;
         }
         return false;
       });
+    };
 
-      if (clickedSearchResult) {
-        await this.page.waitForTimeout(1200);
-        if (await this._hasMessageComposer()) return true;
-      }
-    }
+    let contactsOpened = await openContactsModal();
 
-    // Strategy 2: Open Contacts / Add Contact modal in Bale Web
-    const clickedContactsMenu = await this.page.evaluate(() => {
-      const els = Array.from(document.querySelectorAll('button, a, div[role="button"], span'));
-      const contactBtn = els.find((el) => /^(مخاطبین|مخاطب جدید|افزودن مخاطب|Contacts)$/i.test((el.innerText || '').trim()) || /مخاطب/i.test(el.getAttribute('aria-label') || '') || /contact/i.test(el.getAttribute('title') || ''));
-      if (contactBtn) {
-        contactBtn.click();
-        return true;
-      }
-      return false;
-    });
-
-    if (clickedContactsMenu) {
-      await this.page.waitForTimeout(1000);
-      // Try clicking "Add Contact" / "+" button inside contacts drawer/modal
+    if (!contactsOpened) {
+      // Try clicking Hamburger Menu (☰) or sidebar top icon or floating "+" / pencil button
       await this.page.evaluate(() => {
         const btns = Array.from(document.querySelectorAll('button, [role="button"]'));
-        const addBtn = btns.find((b) => /افزودن|مخاطب جدید|جدید|\+/i.test((b.innerText || '') + ' ' + (b.getAttribute('aria-label') || '') + ' ' + (b.getAttribute('title') || '')));
+        const menuOrFab = btns.find((b) => {
+          const rect = b.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return false;
+          const meta = `${b.getAttribute('aria-label') || ''} ${b.getAttribute('title') || ''} ${b.className || ''}`;
+          const isTopSidebarBtn = rect.top < 100 && rect.width <= 64 && rect.height <= 64 && b.querySelector('svg');
+          const isBottomFab = rect.top > 500 && rect.width <= 72 && rect.height <= 72 && b.querySelector('svg');
+          return /menu|drawer|hamburger|منو|fab|new|add|compose/i.test(meta) || isTopSidebarBtn || isBottomFab;
+        });
+        if (menuOrFab) menuOrFab.click();
+      });
+      await this.page.waitForTimeout(900);
+      contactsOpened = await openContactsModal();
+    }
+
+    if (contactsOpened) {
+      await this.page.waitForTimeout(900);
+
+      // Click "Add Contact" / "افزودن مخاطب" / "+" inside contacts view
+      await this.page.evaluate(() => {
+        const btns = Array.from(document.querySelectorAll('button, [role="button"], a'));
+        const addBtn = btns.find((b) => {
+          const rect = b.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return false;
+          const meta = `${b.innerText || ''} ${b.getAttribute('aria-label') || ''} ${b.getAttribute('title') || ''}`;
+          return /افزودن|مخاطب جدید|ایجاد مخاطب|\+|add contact/i.test(meta);
+        });
         if (addBtn) addBtn.click();
       });
       await this.page.waitForTimeout(900);
 
-      const filledAddModal = await this.page.evaluate(
-        ({ name, phone }) => {
-          const modalInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]):not([type="search"])'));
-          if (modalInputs.length < 2) return false;
-          const setNativeValue = (el, val) => {
-            el.focus();
-            el.value = val;
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-          };
-          setNativeValue(modalInputs[0], name);
-          const phoneInput = modalInputs.find((el) => /tel|phone|شماره|موبایل/i.test((el.placeholder || '') + ' ' + (el.type || ''))) || modalInputs[modalInputs.length - 1];
-          setNativeValue(phoneInput, phone);
+      // Use Playwright's real click + fill/type so React state updates properly
+      const modalInputs = await this.page
+        .locator('input:not([type="hidden"]):not([type="search"])')
+        .all();
 
+      const visibleInputs = [];
+      for (const inp of modalInputs) {
+        if (await inp.isVisible().catch(() => false)) {
+          visibleInputs.push(inp);
+        }
+      }
+
+      if (visibleInputs.length >= 2) {
+        await visibleInputs[0].click();
+        await visibleInputs[0].fill(displayName);
+
+        // Pick phone input (last visible or matching tel/phone)
+        const phoneInp = visibleInputs[visibleInputs.length - 1];
+        await phoneInp.click();
+        await this.page.keyboard.press('Control+A').catch(() => {});
+        await this.page.keyboard.press('Backspace').catch(() => {});
+
+        const has98 = await this.page.evaluate(() => /\+98/.test(document.body?.innerText || ''));
+        await phoneInp.type(has98 ? noZeroPhone : normPhone, { delay: 40 });
+        await this.page.waitForTimeout(500);
+
+        const submitted = await this.page.evaluate(() => {
           const btns = Array.from(document.querySelectorAll('button, [role="button"]'));
-          const submit = btns.find((b) => /افزودن|ذخیره|تایید|تأیید|ایجاد|ثبت/i.test((b.innerText || '').trim()));
+          const submit = btns.find((b) =>
+            /^(افزودن|ذخیره|تایید|تأیید|ایجاد|ثبت|ادامه|Save|Add|Create)$/i.test((b.innerText || '').trim())
+          );
           if (submit) {
             submit.click();
             return true;
           }
           return false;
-        },
-        { name: displayName, phone: normPhone }
-      );
+        });
 
-      if (filledAddModal) {
-        await this.page.waitForTimeout(1800);
+        if (!submitted) {
+          await this.page.keyboard.press('Enter').catch(() => {});
+        }
+        await this.page.waitForTimeout(2000);
         if (await this._hasMessageComposer()) return true;
       }
     }
