@@ -1,6 +1,9 @@
 node_modules
 .git
-data/*.db
-uploads/*
+data
+uploads
+renders
+tests
+docs
 .env
 *.log

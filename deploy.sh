@@ -60,7 +60,11 @@ grep -q "^MELIPAYAMAK_OTP_BODY_ID=" .env && sed -i "s|^MELIPAYAMAK_OTP_BODY_ID=.
 
 mkdir -p data uploads
 
-# 4. Build and launch Docker container using cached base image
+# 4. Free disk space from old dangling images/containers before building
+docker container prune -f >/dev/null 2>&1 || true
+docker image prune -f >/dev/null 2>&1 || true
+
+# 5. Build and launch Docker container using cached base image
 export DOCKER_BUILDKIT=0
 export COMPOSE_DOCKER_CLI_BUILD=0
 
@@ -72,6 +76,8 @@ else
   echo "ERROR: Neither 'docker compose' nor 'docker-compose' was found."
   exit 1
 fi
+
+docker image prune -f >/dev/null 2>&1 || true
 
 echo ""
 echo "=== NoKabin is running on http://$(hostname -I | awk '{print $1}'):3000 ==="
