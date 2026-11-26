@@ -620,23 +620,24 @@ class BaleWebClient extends EventEmitter {
       await this.page.waitForTimeout(400);
     }
 
-    // Step 3: Click explicit "افزودن مخاطب" / "مخاطب جدید" / "+" button inside Contacts (never click Services/Bazoo)
-    await this.page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('button, [role="button"], a'));
-      const addBtn = btns.find((b) => {
-        const rect = b.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return false;
-        const txt = (b.innerText || '').trim();
-        const aria = b.getAttribute('aria-label') || '';
-        const title = b.getAttribute('title') || '';
-        const meta = `${txt} ${aria} ${title}`;
-        if (/خدمات|بازو|هوش مصنوعی|مجله|ربات|فروشگاه/i.test(meta)) return false;
-        return /افزودن مخاطب|مخاطب جدید|ایجاد مخاطب|add contact/i.test(meta) || txt === '+';
+    // Step 3: Click "افزودن مخاطب" (using getByText so it works whether it is a div, li, span, or button)
+    const addContactLoc = this.page.getByText('افزودن مخاطب', { exact: true }).first();
+    if ((await addContactLoc.count()) > 0 && (await addContactLoc.isVisible().catch(() => false))) {
+      await addContactLoc.click().catch(() => {});
+    } else {
+      await this.page.evaluate(() => {
+        const els = Array.from(document.querySelectorAll('button, [role="button"], a, div, li, span'));
+        const addBtn = els.find((b) => {
+          const rect = b.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0 || rect.height > 90) return false;
+          const txt = (b.innerText || '').trim();
+          const meta = `${txt} ${b.getAttribute('aria-label') || ''} ${b.getAttribute('title') || ''}`;
+          if (/خدمات|بازو|هوش مصنوعی|مجله|ربات|فروشگاه/i.test(meta)) return false;
+          return /^(افزودن مخاطب|مخاطب جدید|ایجاد مخاطب|Add Contact)$/i.test(txt);
+        });
+        if (addBtn) addBtn.click();
       });
-      if (addBtn) {
-        addBtn.click();
-      }
-    });
+    }
 
     await this.page.waitForTimeout(900);
 
@@ -648,29 +649,43 @@ class BaleWebClient extends EventEmitter {
     const visibleInputs = [];
     for (const inp of modalInputs) {
       if (await inp.isVisible().catch(() => false)) {
-        visibleInputs.push(inp);
+        const meta = await inp
+          .evaluate((el) => `${el.placeholder || ''} ${el.getAttribute('aria-label') || ''} ${el.name || ''} ${el.type || ''} ${el.value || ''}`)
+          .catch(() => '');
+        visibleInputs.push({ inp, meta });
       }
     }
 
     if (visibleInputs.length >= 2) {
-      await visibleInputs[0].click();
-      await this.page.keyboard.press('Control+A').catch(() => {});
-      await visibleInputs[0].fill(displayName);
+      // Find name input and phone input explicitly (skipping any country/98 input)
+      const nonCountry = visibleInputs.filter((x) => !/کشور|country|ایران|iran/i.test(x.meta));
+      const list = nonCountry.length >= 2 ? nonCountry : visibleInputs;
 
-      const phoneInp = visibleInputs[visibleInputs.length - 1];
-      await phoneInp.click();
+      const nameItem =
+        list.find((x) => /نام|name/i.test(x.meta) && !/خانوادگی|last/i.test(x.meta)) || list[0];
+      const phoneItem =
+        list.find((x) => /tel|phone|mobile|شماره|موبایل|تلفن/i.test(x.meta)) || list[list.length - 1];
+
+      await nameItem.inp.click();
+      await this.page.keyboard.press('Control+A').catch(() => {});
+      await nameItem.inp.fill(displayName);
+
+      await phoneItem.inp.click();
       await this.page.keyboard.press('Control+A').catch(() => {});
       await this.page.keyboard.press('Backspace').catch(() => {});
 
-      const has98 = await this.page.evaluate(() => /\+98/.test(document.body?.innerText || ''));
-      await phoneInp.type(has98 ? noZeroPhone : normPhone, { delay: 40 });
+      const phoneVal = await phoneItem.inp.inputValue().catch(() => '');
+      const has98 = phoneVal.includes('98') || (await this.page.evaluate(() => /\+98/.test(document.body?.innerText || '')));
+      await phoneItem.inp.type(has98 ? noZeroPhone : normPhone, { delay: 40 });
       await this.page.waitForTimeout(500);
 
       const submitted = await this.page.evaluate(() => {
-        const btns = Array.from(document.querySelectorAll('button, [role="button"]'));
-        const submit = btns.find((b) =>
-          /^(افزودن|ذخیره|تایید|تأیید|ایجاد|ثبت|ادامه|Save|Add|Create)$/i.test((b.innerText || '').trim())
-        );
+        const btns = Array.from(document.querySelectorAll('button, [role="button"], div, span'));
+        const submit = btns.find((b) => {
+          const rect = b.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0 || rect.height > 70) return false;
+          return /^(افزودن|ذخیره|تایید|تأیید|ایجاد|ثبت|ادامه|Save|Add|Create)$/i.test((b.innerText || '').trim());
+        });
         if (submit) {
           submit.click();
           return true;
@@ -685,15 +700,23 @@ class BaleWebClient extends EventEmitter {
       if (await this._hasMessageComposer()) return true;
 
       // If contact was added and now appears in Contacts list, click it
-      const clickedNewContact = await this.page.evaluate((nameStr) => {
-        const items = Array.from(document.querySelectorAll('[role="listitem"], [class*="contact"], [class*="Contact"], li'));
-        const match = items.find((el) => (el.innerText || '').includes(nameStr));
-        if (match) {
-          match.click();
-          return true;
-        }
-        return false;
-      }, displayName);
+      const clickedNewContact = await this.page.evaluate(
+        ({ nameStr, phoneStr }) => {
+          const items = Array.from(document.querySelectorAll('[role="listitem"], [class*="contact"], [class*="Contact"], li, div'));
+          const match = items.find((el) => {
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0 || rect.height > 110) return false;
+            const t = el.innerText || '';
+            return t.includes(nameStr) || t.includes(phoneStr);
+          });
+          if (match) {
+            match.click();
+            return true;
+          }
+          return false;
+        },
+        { nameStr: displayName, phoneStr: normPhone }
+      );
 
       if (clickedNewContact) {
         await this.page.waitForTimeout(1200);
