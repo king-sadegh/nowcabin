@@ -576,6 +576,23 @@ class BaleWebClient extends EventEmitter {
       await this.page.waitForTimeout(1000);
     }
 
+    const shortName = displayName.slice(0, 18).trim();
+    const clickVisibleContactRow = async () => {
+      for (const needle of [normPhone, shortName]) {
+        if (!needle || needle.length < 3) continue;
+        const loc = this.page.getByText(needle, { exact: false }).first();
+        if ((await loc.count()) > 0 && (await loc.isVisible().catch(() => false))) {
+          await loc.click({ force: true }).catch(() => {});
+          await this.page.waitForTimeout(1200);
+          if (await this._hasMessageComposer()) return true;
+        }
+      }
+      return false;
+    };
+
+    // Check if contact is already visible at top of Contacts list
+    if (await clickVisibleContactRow()) return true;
+
     // Step 2: Inside Contacts (or main view), search for the phone number in any visible search input
     const searchLoc = this.page
       .locator('input[type="search"], input[placeholder*="جستجو"], input[aria-label*="جستجو"], input[placeholder*="Search" i]')
@@ -589,28 +606,7 @@ class BaleWebClient extends EventEmitter {
         await searchLoc.type(q, { delay: 35 }).catch(() => {});
         await this.page.waitForTimeout(1200);
 
-        const clickedContact = await this.page.evaluate((qList) => {
-          const items = Array.from(
-            document.querySelectorAll('[role="listitem"], [class*="contact"], [class*="Contact"], [class*="chat-item"], [class*="ChatItem"], li')
-          );
-          const match = items.find((el) => {
-            const rect = el.getBoundingClientRect();
-            if (rect.width === 0 || rect.height === 0 || rect.height > 120) return false;
-            const t = (el.innerText || '').trim();
-            if (!t || /نتیجه‌ای یافت نشد|یافت نشد|مخاطبی یافت نشد/i.test(t)) return false;
-            return qList.some((x) => t.includes(x));
-          });
-          if (match) {
-            match.click();
-            return true;
-          }
-          return false;
-        }, [normPhone, plusPhone, noZeroPhone]);
-
-        if (clickedContact) {
-          await this.page.waitForTimeout(1200);
-          if (await this._hasMessageComposer()) return true;
-        }
+        if (await clickVisibleContactRow()) return true;
       }
 
       // Clear search box before trying Add Contact
@@ -699,28 +695,8 @@ class BaleWebClient extends EventEmitter {
       await this.page.waitForTimeout(2000);
       if (await this._hasMessageComposer()) return true;
 
-      // If contact was added and now appears in Contacts list, click it
-      const clickedNewContact = await this.page.evaluate(
-        ({ nameStr, phoneStr }) => {
-          const items = Array.from(document.querySelectorAll('[role="listitem"], [class*="contact"], [class*="Contact"], li, div'));
-          const match = items.find((el) => {
-            const rect = el.getBoundingClientRect();
-            if (rect.width === 0 || rect.height === 0 || rect.height > 110) return false;
-            const t = el.innerText || '';
-            return t.includes(nameStr) || t.includes(phoneStr);
-          });
-          if (match) {
-            match.click();
-            return true;
-          }
-          return false;
-        },
-        { nameStr: displayName, phoneStr: normPhone }
-      );
-
-      if (clickedNewContact) {
-        await this.page.waitForTimeout(1200);
-      }
+      // Click the newly added contact in the Contacts list using Playwright
+      if (await clickVisibleContactRow()) return true;
     }
 
     return await this._hasMessageComposer();

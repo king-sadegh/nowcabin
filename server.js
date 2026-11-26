@@ -35,7 +35,15 @@ app.use(attachUser);
 // Static files & uploaded photos (sample-kitchen served from repo public/sample-kitchen)
 app.use('/uploads/sample-kitchen', express.static(path.join(config.ROOT_DIR, 'public', 'sample-kitchen')));
 app.use('/uploads', express.static(config.UPLOADS_DIR));
-app.use(express.static(path.join(config.ROOT_DIR, 'public')));
+app.use(
+  express.static(path.join(config.ROOT_DIR, 'public'), {
+    setHeaders(res, filePath) {
+      if (filePath.endsWith('.html') || filePath.endsWith('.js')) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      }
+    },
+  })
+);
 
 // Health check for Docker / aaPanel monitoring
 app.get('/api/health', (_req, res) => {
