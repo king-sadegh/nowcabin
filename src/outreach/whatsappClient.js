@@ -53,6 +53,15 @@ class WhatsAppClient extends EventEmitter {
     this.sentIds = new Set();
     this.reconnectTimer = null;
     this.manualStop = false;
+    this.connectingSince = 0;
+    this.debugLog = [];
+  }
+
+  _log(msg) {
+    const entry = `${new Date().toISOString().slice(11, 19)} ${msg}`;
+    this.debugLog.push(entry);
+    if (this.debugLog.length > 10) this.debugLog.shift();
+    console.log(`[WhatsApp] ${msg}`);
   }
 
   getState() {
@@ -66,6 +75,7 @@ class WhatsAppClient extends EventEmitter {
       hasSavedSession,
       proxyUrl: getSetting('outreach_wa_proxy_url', ''),
       vlessTunnel: vlessTunnel.getState(),
+      debugLog: this.debugLog,
     };
   }
 
@@ -80,44 +90,72 @@ class WhatsAppClient extends EventEmitter {
       await this.logout();
     }
 
-    if (this.sock && (this.status === 'connected' || this.status === 'connecting' || this.status === 'qr_ready')) {
+    if (this.sock && (this.status === 'connected' || this.status === 'qr_ready')) {
       return this.getState();
+    }
+
+    // If stuck in 'connecting' for >18s and start() is called again, tear down stale socket first
+    if (this.sock && this.status === 'connecting') {
+      if (Date.now() - this.connectingSince < 18000) {
+        return this.getState();
+      }
+      this._log('Resetting stale connecting socket (>18s)...');
+      try {
+        this.sock.end(new Error('Reset stale connecting socket'));
+      } catch {}
+      this.sock = null;
     }
 
     try {
       this.status = 'connecting';
+      this.connectingSince = Date.now();
       this.lastError = '';
       fs.mkdirSync(AUTH_DIR, { recursive: true });
 
       const baileys = await import('@whiskeysockets/baileys');
       const makeWASocket = baileys.makeWASocket || baileys.default;
-      const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = baileys;
+      const {
+        useMultiFileAuthState,
+        DisconnectReason,
+        fetchLatestBaileysVersion,
+        makeCacheableSignalKeyStore,
+        Browsers,
+      } = baileys;
 
       const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
-      let version = [2, 3000, 1019707846];
+      let version = [2, 3000, 1027934701];
       const rawProxyUrl = getSetting('outreach_wa_proxy_url', '');
       const resolvedProxyUrl = await vlessTunnel.resolveProxyUrl(rawProxyUrl);
       const agent = buildProxyAgent(resolvedProxyUrl);
+      this._log(`Starting socket (proxy=${resolvedProxyUrl ? 'yes' : 'none'}, creds=${Boolean(state?.creds?.me?.id)})`);
 
       try {
-        const latest = await fetchLatestBaileysVersion(agent ? { agent } : undefined);
+        const latest = await Promise.race([
+          fetchLatestBaileysVersion(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('version_timeout')), 2500)),
+        ]);
         if (latest?.version) version = latest.version;
       } catch {
-        // Fallback to built-in version if offline or blocked
+        // Fallback immediately to built-in version if GitHub is slow/blocked
       }
 
       const logger = pino({ level: 'silent' });
+      const authObj =
+        typeof makeCacheableSignalKeyStore === 'function'
+          ? { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) }
+          : state;
+
       const sock = makeWASocket({
         version,
-        auth: state,
+        auth: authObj,
         logger,
         printQRInTerminal: false,
         browser: Browsers ? Browsers.ubuntu('Chrome') : ['NoKabin CRM', 'Chrome', '122.0.0'],
         agent,
         fetchAgent: agent,
-        connectTimeoutMs: 30000,
-        defaultQueryTimeoutMs: 30000,
+        connectTimeoutMs: 25000,
+        defaultQueryTimeoutMs: 25000,
         keepAliveIntervalMs: 25000,
         markOnlineOnConnect: false,
         syncFullHistory: false,
@@ -128,6 +166,7 @@ class WhatsAppClient extends EventEmitter {
 
       sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
+        this._log(`connection.update: conn=${connection || '-'} qr=${Boolean(qr)}`);
 
         if (qr) {
           this.qrText = qr;
@@ -147,7 +186,7 @@ class WhatsAppClient extends EventEmitter {
           const meId = sock.user?.id || '';
           this.connectedPhone = waJidToIranPhone(meId) || meId;
           this.connectedName = sock.user?.name || 'خط واتس‌اپ نوکابین';
-          console.log(`[WhatsApp] Connected as ${this.connectedPhone}`);
+          this._log(`Connected as ${this.connectedPhone}`);
         }
 
         if (connection === 'close') {
@@ -157,6 +196,7 @@ class WhatsAppClient extends EventEmitter {
             0;
           const errMessage = lastDisconnect?.error?.message || 'ارتباط با واتس‌اپ قطع شد.';
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut && !this.manualStop;
+          this._log(`Closed: code=${statusCode} msg=${errMessage}`);
 
           this.sock = null;
           this.qrDataUrl = '';
@@ -172,6 +212,7 @@ class WhatsAppClient extends EventEmitter {
           } else if (shouldReconnect) {
             const isRestartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515;
             this.status = 'connecting';
+            this.connectingSince = Date.now();
             this.lastError = isRestartRequired
               ? 'اسکن QR انجام شد؛ در حال تکمیل اتصال نهایی...'
               : `در حال اتصال مجدد (${errMessage})...`;

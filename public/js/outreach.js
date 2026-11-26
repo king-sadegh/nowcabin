@@ -666,6 +666,11 @@
                 ? `<div class="info-banner olive">✅ واتس‌اپ متصل و آماده ارسال و دریافت پیام است.</div>`
                 : `<div style="font-size:0.84rem; color:var(--text-muted);">روی «دریافت QR Code واتس‌اپ» کلیک کنید تا بارکد تولید شود.</div>`
             }
+            ${
+              Array.isArray(wa.debugLog) && wa.debugLog.length > 0
+                ? `<div class="ltr" style="margin-top:10px; text-align:left; font-size:0.72rem; color:var(--text-muted); background:#fff; padding:8px; border-radius:8px; border:1px solid var(--border-light); max-height:110px; overflow-y:auto; white-space:pre-wrap;">${escapeHtml(wa.debugLog.join('\n'))}</div>`
+                : ''
+            }
           </div>
         </div>
 
