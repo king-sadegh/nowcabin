@@ -40,7 +40,7 @@ function parseTemplatesJson(raw) {
     }
   } catch {}
   return [
-    'سلام {{name}} عزیز وقت بخیر 🌹\nمن از مجموعه تخصصی «نوکابین» پیام می‌دم. ما کابینت‌های قدیمی رو بدون تخریب و تعویض، با رنگ پلی‌اورتان در ۱۵ روز کاری با یک‌دهم هزینه تعویض (حدود ۷۰ میلیون به‌جای ۷۰۰ میلیون) نو می‌کنیم.\nبرای مشاورین املاک محترم منطقه {{district}}، ۵٪ پورسانت نقدی (~۳.۵ میلیون تومان) + ۲ میلیون تخفیف ویژه برای مشتری در نظر گرفتیم.\nمایل هستید شرایط همکاری و لینک اختصاصی‌تون رو بفرستم؟',
+    'سلام {{name}}، مشاور محترم {{district}} 🌹\nمن از مجموعه تخصصی «نوکابین» پیام می‌دم. ما کابینت‌های قدیمی رو بدون تخریب و تعویض، با رنگ پلی‌اورتان در ۱۵ روز کاری با یک‌دهم هزینه تعویض (حدود ۷۰ میلیون به‌جای ۷۰۰ میلیون) نو می‌کنیم.\nبرای مشاورین املاک محترم {{district}}، ۵٪ پورسانت نقدی (~۳.۵ میلیون تومان) + ۲ میلیون تخفیف ویژه برای مشتری در نظر گرفتیم.\nمایل هستید شرایط همکاری و لینک اختصاصی‌تون رو بفرستم؟',
   ];
 }
 
@@ -87,16 +87,26 @@ class OutreachManager {
       });
     }, 10000);
 
-    // 60s Keep-Alive Watchdog: keeps both WhatsApp and Bale running permanently without manual login
+    // 30s Always-On Keep-Alive Watchdog: automatically recovers WhatsApp & Bale if disconnected, errored, or crashed
     if (this.watchdogTimer) clearInterval(this.watchdogTimer);
     this.watchdogTimer = setInterval(() => {
-      if (fs.existsSync(waCreds) && this.wa.status === 'disconnected' && !this.wa.manualStop) {
+      if (
+        fs.existsSync(waCreds) &&
+        !this.wa.manualStop &&
+        (this.wa.status === 'disconnected' || this.wa.status === 'error')
+      ) {
         this.wa.start().catch(() => {});
       }
-      if (fs.existsSync(baleProfileDir) && (this.bale.status === 'disconnected' || this.bale.status === 'error')) {
+      if (
+        fs.existsSync(baleProfileDir) &&
+        (this.bale.status === 'disconnected' ||
+          this.bale.status === 'error' ||
+          !this.bale.page ||
+          this.bale.page.isClosed())
+      ) {
         this.bale.start().catch(() => {});
       }
-    }, 60000);
+    }, 30000);
   }
 
   _bindEvents() {
@@ -247,8 +257,8 @@ class OutreachManager {
           continue;
         }
 
-        // Split by comma, semicolon, tab, or pipe
-        const parts = line.split(/[,;\t|]/).map((s) => s.trim());
+        // Split by English comma, Persian comma (،), semicolon, tab, or pipe
+        const parts = line.split(/[,،;\t|]/).map((s) => s.trim());
         let phone = '';
         let fullName = '';
         let agencyName = '';

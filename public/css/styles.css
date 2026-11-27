@@ -2483,8 +2483,9 @@ th {
     font-size: 0.76rem;
   }
   .phone-quick,
-  .hide-sm {
-    display: none;
+  .hide-sm,
+  .hero-ba-col {
+    display: none !important;
   }
   .hero-cta-row {
     flex-direction: column;

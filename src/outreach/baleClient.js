@@ -89,6 +89,11 @@ class BaleWebClient extends EventEmitter {
       }
 
       this.context = await chromium.launchPersistentContext(BALE_PROFILE_DIR, launchOpts);
+      this.context.on('close', () => {
+        this.context = null;
+        this.page = null;
+        this.status = 'disconnected';
+      });
       const pages = this.context.pages();
       this.page = pages.length > 0 ? pages[0] : await this.context.newPage();
 

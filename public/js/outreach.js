@@ -490,19 +490,30 @@
         });
       });
 
+      const formatDistrictLabelClient = (d) => {
+        const s = String(d || '').trim() || 'تهران';
+        return /^[0-9۰-۹]+$/.test(s) ? `منطقه ${s}` : s;
+      };
+
       document.getElementById('insertRefLinkBtn')?.addEventListener('click', () => {
         const ta = document.getElementById('directSendTextarea');
+        const dLabel = formatDistrictLabelClient(contact.district);
+        const greet = contact.full_name
+          ? `سلام ${contact.full_name}، مشاور محترم ${dLabel}`
+          : `سلام مشاور محترم ${dLabel}`;
         ta.value =
           (ta.value ? ta.value + '\n' : '') +
-          `سلام ${contact.full_name || 'همکار'} عزیز 🌹\nلینک دعوت اختصاصی شما در نوکابین (۲ میلیون تخفیف مشتری + ۵٪ پورسانت شما):\n${refUrl}\nمشاهده نمونه‌کارهای واقعی:\n${window.location.origin}/changes.html`;
+          `${greet} 🌹\nلینک دعوت اختصاصی شما در نوکابین (۲ میلیون تخفیف مشتری + ۵٪ پورسانت شما):\n${refUrl}\nمشاهده نمونه‌کارهای واقعی:\n${window.location.origin}/changes.html`;
       });
 
       document.getElementById('insertInviteTemplateBtn')?.addEventListener('click', () => {
         const ta = document.getElementById('directSendTextarea');
         const tpl = (overview.settings.templates && overview.settings.templates[0]) || '';
+        const dLabel = formatDistrictLabelClient(contact.district);
         ta.value = tpl
-          .replace(/\{\{\s*name\s*\}\}/gi, contact.full_name || 'مشاور محترم املاک')
-          .replace(/\{\{\s*district\s*\}\}/gi, contact.district || 'تهران')
+          .replace(/\{\{\s*name\s*\}\}/gi, contact.full_name || 'همکار گرامی')
+          .replace(/\{\{\s*district_label\s*\}\}/gi, dLabel)
+          .replace(/\{\{\s*district\s*\}\}/gi, dLabel)
           .replace(/\{\{\s*agency\s*\}\}/gi, contact.agency_name || 'دفتر املاک')
           .replace(/\{\{\s*link\s*\}\}/gi, refUrl);
       });

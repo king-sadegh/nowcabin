@@ -25,6 +25,43 @@ function buildReferralLink(phone) {
   return `${getBaseUrl()}/?ref=${encodeURIComponent(norm)}`;
 }
 
+function formatDistrictLabel(district) {
+  const d = String(district || '').trim();
+  if (!d) return 'تهران';
+  if (/^[0-9۰-۹]+$/.test(d)) return `منطقه ${d}`;
+  return d;
+}
+
+function extractCleanContactInfo(contact = {}) {
+  let fullName = String(contact.full_name || '').trim();
+  let agencyName = String(contact.agency_name || '').trim();
+  let district = String(contact.district || '').trim();
+
+  // If full_name accidentally contains comma/Persian-comma separated fields (e.g. "0912..., نام, املاک, منطقه 3")
+  if (fullName && (/[,،;\t|]/.test(fullName) || /09[0-9۰-۹]{9}/.test(fullName))) {
+    const parts = fullName
+      .split(/[,،;\t|]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .filter((s) => !config.isValidIranMobile(config.normalizePhone(s)));
+
+    if (parts.length > 0) {
+      fullName = parts[0];
+      if (!agencyName && parts.length >= 2) agencyName = parts[1];
+      if ((!district || district === 'شمال و شرق تهران') && parts.length >= 3) district = parts[2];
+    } else {
+      fullName = '';
+    }
+  }
+
+  return {
+    fullName,
+    agencyName: agencyName || 'دفتر املاک شما',
+    district: district || 'تهران',
+    districtLabel: formatDistrictLabel(district || 'تهران'),
+  };
+}
+
 /**
  * Evaluates an inbound message from a real estate agent using smart Persian rule/keyword matching.
  * Returns { category, replyText, isSerious, seriousReason, isOptOut, autoRegisterAgent }
@@ -32,7 +69,10 @@ function buildReferralLink(phone) {
 function evaluateAgentReply(messageText, contact = {}) {
   const text = normalizePersianText(messageText);
   const rawLen = text.length;
-  const name = contact.full_name ? `${contact.full_name} عزیز` : 'همکار گرامی';
+  const info = extractCleanContactInfo(contact);
+  const name = info.fullName
+    ? `${info.fullName}، مشاور محترم ${info.districtLabel}`
+    : `مشاور محترم ${info.districtLabel}`;
   const baseUrl = getBaseUrl();
   const refLink = buildReferralLink(contact.phone || '');
   const commissionPct = Number(getSetting('default_commission_percent', config.DEFAULT_AGENT_COMMISSION_PERCENT)) || 5;
@@ -265,22 +305,27 @@ function evaluateAgentReply(messageText, contact = {}) {
 }
 
 function renderCampaignTemplate(templateStr, contact = {}) {
-  const cleanName = (contact.full_name || '').trim();
-  const displayName = cleanName ? cleanName : 'مشاور محترم املاک';
-  const displayAgency = (contact.agency_name || '').trim() || 'دفتر املاک شما';
-  const displayDistrict = (contact.district || '').trim() || 'تهران';
+  const info = extractCleanContactInfo(contact);
+  const displayName = info.fullName || 'همکار گرامی';
+  const greeting = info.fullName
+    ? `سلام ${info.fullName}، مشاور محترم ${info.districtLabel}`
+    : `سلام مشاور محترم ${info.districtLabel}`;
   const refLink = buildReferralLink(contact.phone || '');
 
   return String(templateStr || '')
+    .replace(/\{\{\s*greeting\s*\}\}/gi, greeting)
     .replace(/\{\{\s*name\s*\}\}/gi, displayName)
-    .replace(/\{\{\s*agency\s*\}\}/gi, displayAgency)
-    .replace(/\{\{\s*district\s*\}\}/gi, displayDistrict)
+    .replace(/\{\{\s*agency\s*\}\}/gi, info.agencyName)
+    .replace(/\{\{\s*district_label\s*\}\}/gi, info.districtLabel)
+    .replace(/\{\{\s*district\s*\}\}/gi, info.districtLabel)
     .replace(/\{\{\s*phone\s*\}\}/gi, contact.phone || '')
     .replace(/\{\{\s*link\s*\}\}/gi, refLink);
 }
 
 module.exports = {
   normalizePersianText,
+  formatDistrictLabel,
+  extractCleanContactInfo,
   buildReferralLink,
   evaluateAgentReply,
   renderCampaignTemplate,

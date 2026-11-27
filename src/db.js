@@ -259,9 +259,9 @@ function setSetting(key, value) {
 
 function seedDefaults() {
   const defaultTemplates = [
-    'سلام {{name}} عزیز وقت بخیر 🌹\nمن از مجموعه تخصصی «نوکابین» پیام می‌دم. ما کابینت‌های قدیمی رو بدون تخریب و تعویض، با رنگ پلی‌اورتان در ۱۵ روز کاری با یک‌دهم هزینه تعویض (حدود ۷۰ میلیون به‌جای ۷۰۰ میلیون) نو می‌کنیم.\nبرای مشاورین املاک محترم منطقه {{district}}، ۵٪ پورسانت نقدی (~۳.۵ میلیون تومان) + ۲ میلیون تخفیف ویژه برای مشتری در نظر گرفتیم.\nمایل هستید شرایط همکاری و لینک اختصاصی‌تون رو بفرستم؟',
-    'درود {{name}} گرامی 🌟\nخیلی از فایل‌های فروش یا اجاره در {{district}} فقط به‌خاطر قدیمی بودن کابینت آشپزخانه دیرتر معامله می‌شن.\nما در «نوکابین» بدون تخریب و با حفظ بدنه، کابینت‌ها رو با رنگ تخصصی پلی‌اورتان با ۱/۱۰ قیمت تعویض بازسازی می‌کنیم.\nبا معرفی هر مشتری، هم مشتری ۲ میلیون تخفیف می‌گیره و هم ۵٪ مبلغ قرارداد پورسانت تقدیم شما می‌شه. دوست دارید نمونه‌کارهای واقعی قبل و بعد رو ببینید؟',
-    'سلام و احترام خدمت {{name}} عزیز 🙏\nاز تیم مدیریت «نوکابین» (بازسازی تخصصی کابینت بدون تعویض) مزاحم می‌شم.\nطرح همکاری ویژه‌ای با دفاتر املاک {{district}} شروع کردیم: اجرای ۱۵ روزه با رنگ پلی‌اورتان، ۲ میلیون تخفیف مستقیم برای مشتری شما و ۵٪ پورسانت همکاری برای شما.\nاگر موافق باشید لینک دعوت اختصاصی و عکس نمونه‌کارها رو براتون ارسال کنم.'
+    'سلام {{name}}، مشاور محترم {{district}} 🌹\nمن از مجموعه تخصصی «نوکابین» پیام می‌دم. ما کابینت‌های قدیمی رو بدون تخریب و تعویض، با رنگ پلی‌اورتان در ۱۵ روز کاری با یک‌دهم هزینه تعویض (حدود ۷۰ میلیون به‌جای ۷۰۰ میلیون) نو می‌کنیم.\nبرای مشاورین املاک محترم {{district}}، ۵٪ پورسانت نقدی (~۳.۵ میلیون تومان) + ۲ میلیون تخفیف ویژه برای مشتری در نظر گرفتیم.\nمایل هستید شرایط همکاری و لینک اختصاصی‌تون رو بفرستم؟',
+    'سلام {{name}}، مشاور محترم {{district}} 🌟\nخیلی از فایل‌های فروش یا اجاره در {{district}} فقط به‌خاطر قدیمی بودن کابینت آشپزخانه دیرتر معامله می‌شن.\nما در «نوکابین» بدون تخریب و با حفظ بدنه، کابینت‌ها رو با رنگ تخصصی پلی‌اورتان با ۱/۱۰ قیمت تعویض بازسازی می‌کنیم.\nبا معرفی هر مشتری، هم مشتری ۲ میلیون تخفیف می‌گیره و هم ۵٪ مبلغ قرارداد پورسانت تقدیم شما می‌شه. دوست دارید نمونه‌کارهای واقعی قبل و بعد رو ببینید؟',
+    'سلام {{name}}، مشاور محترم {{district}} 🙏\nاز تیم مدیریت «نوکابین» (بازسازی تخصصی کابینت بدون تعویض) پیام می‌دم.\nطرح همکاری ویژه‌ای با دفاتر املاک {{district}} شروع کردیم: اجرای ۱۵ روزه با رنگ پلی‌اورتان، ۲ میلیون تخفیف مستقیم برای مشتری شما و ۵٪ پورسانت همکاری برای شما.\nاگر موافق باشید لینک دعوت اختصاصی و عکس نمونه‌کارها رو براتون ارسال کنم.'
   ];
 
   const defaultSettings = {
@@ -278,7 +278,8 @@ function seedDefaults() {
     outreach_max_delay_sec: '210',
     outreach_work_hour_start: '9',
     outreach_work_hour_end: '21',
-    outreach_wa_proxy_url: '',
+    outreach_wa_proxy_url:
+      'vless://307dac3f-2a85-4217-b109-cd79674c5f83@hu-node4a.aattaashserver.xyz:443?alpn=h2%2Chttp%2F1.1&encryption=mlkem768x25519plus.native.0rtt._nlfSFJEyY8tcgc295OROa03MtOUaS7bfU1tHecflkk&fp=chrome&security=tls&sni=hu-node4a.aattaashserver.xyz&type=tcp#TLS-MSKarami3',
     outreach_bale_proxy_url: '',
     outreach_admin_alert_phone: config.ADMIN_PHONE || '09225603574',
     outreach_admin_alert_channel: 'both',
@@ -292,9 +293,33 @@ function seedDefaults() {
     if (
       !exists ||
       (k === 'max_photos_per_user' && exists.value === '5') ||
-      (k === 'outreach_wa_proxy_url' && (!exists.value || exists.value.includes('h-pl.ok-habits.xyz')))
+      (k === 'outreach_wa_proxy_url' && (!exists.value || exists.value.includes('h-pl.ok-habits.xyz'))) ||
+      (k === 'outreach_templates_json' && exists.value.includes('سلام {{name}} عزیز'))
     ) {
       setSetting(k, v);
+    }
+  }
+
+  // Clean any existing outreach_contacts where Persian comma '،' caused full_name to contain phone/agency/district
+  const dirtyContacts = db
+    .prepare("SELECT id, phone, full_name, agency_name, district FROM outreach_contacts WHERE full_name LIKE '%،%' OR full_name LIKE '%,%' OR full_name LIKE '%09%'")
+    .all();
+  for (const row of dirtyContacts) {
+    const parts = String(row.full_name || '')
+      .split(/[,،;\t|]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .filter((s) => !config.isValidIranMobile(config.normalizePhone(s)));
+    if (parts.length > 0) {
+      const cleanName = parts[0];
+      const cleanAgency = row.agency_name || (parts.length >= 2 ? parts[1] : '');
+      const cleanDistrict = parts.length >= 3 ? parts[2] : row.district;
+      db.prepare('UPDATE outreach_contacts SET full_name = ?, agency_name = ?, district = ? WHERE id = ?').run(
+        cleanName,
+        cleanAgency,
+        cleanDistrict,
+        row.id
+      );
     }
   }
 
