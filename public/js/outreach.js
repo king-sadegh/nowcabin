@@ -623,9 +623,16 @@
             سیم‌کارت مجزای ارسال پیام را در گوشی باز کنید، از بخش <strong>Linked Devices (دستگاه‌های متصل)</strong> کد زیر را اسکن نمایید. اگر خودتان از گوشی در چتی پیام بنویسید، ربات برای آن شخص خودکار متوقف می‌شود.
           </p>
 
-          <div class="field" style="margin-bottom:12px;">
-            <label>پروکسی واتس‌اپ (مخصوص سرور ایران — لینک مستقیم <code>vless://...</code> یا <code>socks5://</code> / <code>http://</code>)</label>
-            <input type="text" id="waProxyInput" class="ltr" value="${escapeHtml(wa.proxyUrl || '')}" placeholder="vless://uuid@server:port?security=reality&... یا socks5://127.0.0.1:10808" />
+          <div style="padding:12px; border:1px solid var(--border-medium); border-radius:10px; background:#fff; margin-bottom:14px;">
+            <div class="field" style="margin-bottom:10px;">
+              <label>🛡 تنظیم پروکسی فعال واتس‌اپ (پشتیبانی از <code>vless://</code>، <code>trojan://</code>، <code>socks5://</code> و <code>http://</code>)</label>
+              <textarea id="waProxyInput" rows="2" class="ltr" placeholder="vless://... یا trojan://... یا socks5://127.0.0.1:10808" style="width:100%; padding:8px; border:1px solid var(--border-medium); border-radius:8px; font-size:0.8rem;">${escapeHtml(wa.proxyUrl || '')}</textarea>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              <button type="button" class="btn btn-primary btn-sm" id="applyProxyBtn">✅ اعمال پروکسی و اتصال</button>
+              <button type="button" class="btn btn-outline btn-sm" id="testProxyBtn">🔍 تست پروکسی (آی‌پی، کشور و واتس‌اپ)</button>
+            </div>
+            <div id="proxyTestResultBox" style="margin-top:10px; font-size:0.82rem;"></div>
           </div>
 
           <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">

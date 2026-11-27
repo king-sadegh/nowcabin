@@ -811,7 +811,7 @@ class BaleWebClient extends EventEmitter {
   }
 
   /**
-   * Periodically inspects Bale Web for unread conversations and extracts the latest inbound message.
+   * Periodically inspects Bale Web for unread replies from outreach contacts and emits inbound_message.
    */
   async pollActiveCycle() {
     if (this.busy || !this.page || this.page.isClosed()) return;
@@ -822,64 +822,186 @@ class BaleWebClient extends EventEmitter {
 
     this.busy = true;
     try {
-      // Check if there is an unread badge in chat list and click it
-      const unreadClicked = await this.page.evaluate(() => {
-        const items = Array.from(
-          document.querySelectorAll('[role="listitem"], [class*="chat-item"], [class*="ChatItem"], [class*="dialog"]')
-        );
-        for (const item of items) {
-          const badge = item.querySelector('[class*="badge"], [class*="unread"], [class*="Badge"], [class*="Unread"]');
-          if (badge && /^\d+$/.test((badge.innerText || '').trim())) {
-            item.click();
-            return true;
-          }
-        }
-        return false;
+      // Load outreach contacts so we only click/process chats belonging to our real estate agents
+      const knownContacts = db
+        .prepare('SELECT id, phone, full_name FROM outreach_contacts ORDER BY updated_at DESC LIMIT 500')
+        .all();
+
+      const contactSignatures = knownContacts.map((c) => ({
+        id: c.id,
+        phone: c.phone,
+        shortName: (c.full_name || '').trim().slice(0, 16),
+      }));
+
+      // Switch to "گفتگو" tab on the right rail if we're currently on "مخاطبین"
+      const onContactsTab = await this.page.evaluate(() => {
+        const headerTexts = Array.from(document.querySelectorAll('div, h1, h2, span'))
+          .filter((el) => {
+            const r = el.getBoundingClientRect();
+            return r.top < 80 && r.left > window.innerWidth - 460 && r.right < window.innerWidth - 70;
+          })
+          .map((el) => (el.innerText || '').trim());
+        return headerTexts.some((t) => t === 'مخاطبین');
       });
 
-      if (unreadClicked) {
+      if (onContactsTab) {
+        const chatsNav = this.page.getByText('گفتگو', { exact: true }).first();
+        if ((await chatsNav.count()) > 0 && (await chatsNav.isVisible().catch(() => false))) {
+          await chatsNav.click().catch(() => {});
+          await this.page.waitForTimeout(900);
+        }
+      }
+
+      // Click any sidebar chat item that has an unread badge (Persian OR ASCII digits) AND matches one of our contacts
+      const unreadCoords = await this.page.evaluate((sigs) => {
+        const vw = window.innerWidth;
+        const rows = Array.from(
+          document.querySelectorAll('[role="listitem"], [class*="chat"], [class*="Chat"], [class*="dialog"], li, div')
+        ).filter((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width >= 160 && r.height >= 44 && r.height <= 110 && r.left >= vw - 460 && r.right <= vw - 70 && r.top >= 90;
+        });
+
+        for (const row of rows) {
+          const txt = (row.innerText || '').trim();
+          if (!txt) continue;
+          // Check if row has an unread counter badge (supports both Persian ۰-۹ and ASCII 0-9)
+          const badge = Array.from(row.querySelectorAll('span, div')).find((b) => {
+            const bt = (b.innerText || '').trim();
+            const br = b.getBoundingClientRect();
+            return br.width > 12 && br.width < 46 && br.height > 12 && br.height < 36 && /^[0-9۰-۹]{1,3}$/.test(bt);
+          });
+          if (!badge) continue;
+
+          const matched = sigs.find(
+            (s) => (s.phone && txt.includes(s.phone)) || (s.shortName && s.shortName.length >= 3 && txt.includes(s.shortName))
+          );
+          if (matched) {
+            const r = row.getBoundingClientRect();
+            return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+          }
+        }
+        return null;
+      }, contactSignatures);
+
+      if (unreadCoords) {
+        await this.page.mouse.click(unreadCoords.x, unreadCoords.y);
         await this.page.waitForTimeout(1200);
       }
 
-      // Extract open chat header phone/title and last inbound message bubble
+      // Now inspect the currently open chat in the LEFT pane (rect.left < vw - 460)
       const activeChatInfo = await this.page.evaluate(() => {
-        const headerText = (
-          document.querySelector('header, [class*="header"], [class*="ChatHeader"]')?.innerText || ''
-        ).trim();
-        const msgEls = Array.from(
-          document.querySelectorAll('[class*="message"], [class*="Message"], [data-message-id]')
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const leftPaneMaxRight = vw - 420;
+
+        // 1. Extract open chat header text from top of left pane
+        const headerEls = Array.from(document.querySelectorAll('header, h1, h2, h3, div, span')).filter((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 40 && r.height > 14 && r.height < 90 && r.top >= 0 && r.top < 85 && r.right <= leftPaneMaxRight;
+        });
+        const headerText = headerEls
+          .map((el) => (el.innerText || '').trim())
+          .filter(Boolean)
+          .slice(0, 6)
+          .join(' | ');
+
+        // 2. Extract message bubbles in the left pane (between header and composer)
+        const msgCandidates = Array.from(
+          document.querySelectorAll('[data-message-id], [class*="message"], [class*="Message"], [class*="bubble"], [class*="Bubble"]')
+        ).filter((el) => {
+          const r = el.getBoundingClientRect();
+          const t = (el.innerText || '').trim();
+          return (
+            t.length > 0 &&
+            r.width > 30 &&
+            r.width < leftPaneMaxRight - 20 &&
+            r.height >= 20 &&
+            r.height < vh - 160 &&
+            r.top >= 75 &&
+            r.bottom <= vh - 65 &&
+            r.right <= leftPaneMaxRight
+          );
+        });
+
+        if (msgCandidates.length === 0) return null;
+
+        // Sort by vertical bottom position to find the lowest (most recent) message bubble
+        msgCandidates.sort((a, b) => {
+          const ra = a.getBoundingClientRect();
+          const rb = b.getBoundingClientRect();
+          if (Math.abs(rb.bottom - ra.bottom) > 6) return rb.bottom - ra.bottom;
+          return ra.height - rb.height;
+        });
+
+        const lastEl = msgCandidates[0];
+        const cls = ((lastEl.className || '') + ' ' + (lastEl.parentElement?.className || '')).toLowerCase();
+        const hasOutgoingTick = Boolean(
+          lastEl.querySelector('[class*="tick"], [class*="check"], [class*="seen"], [class*="status"]')
         );
-        if (msgEls.length === 0) return null;
-        const lastEl = msgEls[msgEls.length - 1];
-        const cls = (lastEl.className || '').toLowerCase();
-        const isOutgoing = cls.includes('out') || cls.includes('own') || cls.includes('right') || cls.includes('sent');
-        const text = (lastEl.innerText || '').trim();
+        const isOutgoing =
+          hasOutgoingTick || cls.includes('out') || cls.includes('own') || cls.includes('sent') || cls.includes('self');
+
+        // Clean timestamp line (e.g. "21:14" or "۲۱:۱۴") from the end of bubble text
+        const rawLines = (lastEl.innerText || '')
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l && !/^[0-9۰-۹]{1,2}:[0-9۰-۹]{2}$/.test(l));
+
         return {
           headerText,
           isOutgoing,
-          text,
+          text: rawLines.join('\n').trim(),
         };
       });
 
-      if (activeChatInfo && !activeChatInfo.isOutgoing && activeChatInfo.text) {
-        const headerPhoneMatch = activeChatInfo.headerText.match(/(?:\+98|09)[0-9۰-۹]{9,10}/);
-        if (headerPhoneMatch) {
-          const phone = config.normalizePhone(headerPhoneMatch[0]);
-          if (config.isValidIranMobile(phone)) {
-            const cleanMsg = activeChatInfo.text.split('\n')[0].trim();
-            const prev = this.lastObservedTexts.get(phone);
-            if (cleanMsg && cleanMsg !== prev) {
-              this.lastObservedTexts.set(phone, cleanMsg);
-              this.emit('inbound_message', {
-                channel: 'bale',
-                phone,
-                text: cleanMsg,
-                pushName: activeChatInfo.headerText.split('\n')[0] || '',
-                externalId: `bale_in_${Date.now()}`,
-              });
-            }
+      if (!activeChatInfo || !activeChatInfo.text) return;
+
+      // Resolve phone from header text OR by matching against known outreach_contacts
+      let matchedContact = null;
+      const headerPhoneMatch = activeChatInfo.headerText.match(/(?:\+98|09)[0-9۰-۹]{9,10}/);
+      if (headerPhoneMatch) {
+        const norm = config.normalizePhone(headerPhoneMatch[0]);
+        if (config.isValidIranMobile(norm)) {
+          matchedContact = knownContacts.find((c) => c.phone === norm) || { phone: norm, full_name: '' };
+        }
+      }
+      if (!matchedContact) {
+        matchedContact = knownContacts.find((c) => {
+          const shortN = (c.full_name || '').trim().slice(0, 14);
+          return (c.phone && activeChatInfo.headerText.includes(c.phone)) || (shortN.length >= 3 && activeChatInfo.headerText.includes(shortN));
+        });
+      }
+
+      if (!matchedContact || !config.isValidIranMobile(matchedContact.phone)) return;
+
+      // Double-check against our last outbound message in DB so we NEVER echo our own message
+      if (matchedContact.id) {
+        const lastOut = db
+          .prepare("SELECT body FROM outreach_messages WHERE contact_id = ? AND channel = 'bale' AND direction = 'outbound' ORDER BY id DESC LIMIT 1")
+          .get(matchedContact.id);
+        if (lastOut && lastOut.body) {
+          const outPrefix = lastOut.body.trim().slice(0, 28);
+          if (activeChatInfo.text.includes(outPrefix) || lastOut.body.trim().includes(activeChatInfo.text.slice(0, 28))) {
+            return;
           }
         }
+      }
+
+      if (activeChatInfo.isOutgoing) return;
+
+      const phone = matchedContact.phone;
+      const cleanMsg = activeChatInfo.text;
+      const prev = this.lastObservedTexts.get(phone);
+      if (cleanMsg && cleanMsg !== prev) {
+        this.lastObservedTexts.set(phone, cleanMsg);
+        this.emit('inbound_message', {
+          channel: 'bale',
+          phone,
+          text: cleanMsg,
+          pushName: matchedContact.full_name || activeChatInfo.headerText.split('|')[0].trim(),
+          externalId: `bale_in_${phone}_${cleanMsg.slice(0, 24)}`,
+        });
       }
     } catch {
       // Ignore transient DOM polling errors

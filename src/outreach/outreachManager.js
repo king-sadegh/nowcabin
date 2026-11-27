@@ -656,9 +656,16 @@ class OutreachManager {
       WHERE id = ?
     `).run(contact.id);
 
-    // If admin manually sent a reply from the panel, pause automatic bot replies for this contact
+    // Only auto-pause bot when admin is replying to an existing inbound conversation (not initial manual invite)
     if (senderType === 'admin') {
-      db.prepare('UPDATE outreach_contacts SET bot_paused = 1, unread_count = 0 WHERE id = ?').run(contact.id);
+      const inboundCount = db
+        .prepare("SELECT COUNT(*) AS c FROM outreach_messages WHERE contact_id = ? AND direction = 'inbound'")
+        .get(contact.id)?.c || 0;
+      if (inboundCount > 0) {
+        db.prepare('UPDATE outreach_contacts SET bot_paused = 1, unread_count = 0 WHERE id = ?').run(contact.id);
+      } else {
+        db.prepare('UPDATE outreach_contacts SET unread_count = 0 WHERE id = ?').run(contact.id);
+      }
     }
 
     return sendRes;
