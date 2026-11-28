@@ -127,6 +127,9 @@
             💬 صندوق گفتگوها و لیست مشاورین (${toPersianDigits(stats.totalContacts)})
             ${stats.seriousCount > 0 ? `<span class="tag" style="background:#fee2e2; color:#b91c1c; margin-right:6px;">${toPersianDigits(stats.seriousCount)} جدی</span>` : ''}
           </button>
+          <button type="button" class="panel-tab ${activeSubTab === 'discovery' ? 'active' : ''}" data-outreach-sub="discovery">
+            🕵️ استخراج خودکار مشاورین شمال تهران (دیوار + وب)
+          </button>
           <button type="button" class="panel-tab ${activeSubTab === 'connections' ? 'active' : ''}" data-outreach-sub="connections">
             🔌 اتصال واتس‌اپ (QR) و بله وب
           </button>
@@ -187,6 +190,8 @@
       const subContainer = document.getElementById('outreachSubContent');
       if (activeSubTab === 'inbox') {
         await renderInboxSubTab(subContainer, container, overview);
+      } else if (activeSubTab === 'discovery') {
+        await renderDiscoverySubTab(subContainer, container);
       } else if (activeSubTab === 'connections') {
         renderConnectionsSubTab(subContainer, container, overview);
       } else if (activeSubTab === 'import') {
@@ -1229,5 +1234,378 @@
         box.textContent = err.message;
       }
     });
+  }
+
+  // ---------------- 5. AUTOMATED LEAD DISCOVERY (NORTH TEHRAN DIVAR + PUBLIC WEB) ----------------
+  let discoveryFilter = 'all';
+  let discoveryDistrictFilter = '';
+  let discoverySearch = '';
+  let selectedDiscoveryDistricts = ['1', '2', '3'];
+  let selectedDiscoveryMode = 'both';
+
+  async function renderDiscoverySubTab(subContainer, rootContainer) {
+    const { escapeHtml, toPersianDigits, showToast, apiFetch } = window.NoKabin;
+
+    if (window._discoveryPollTimer) {
+      clearInterval(window._discoveryPollTimer);
+      window._discoveryPollTimer = null;
+    }
+
+    const qs = new URLSearchParams({
+      filter: discoveryFilter,
+      district: discoveryDistrictFilter,
+      search: discoverySearch,
+      limit: '150',
+    });
+    const data = await apiFetch(`/api/outreach/discovery/overview?${qs.toString()}`);
+    const { districtsCatalog, latestJob, stats, leads } = data;
+    const isRunning = latestJob && latestJob.status === 'running';
+
+    subContainer.innerHTML = `
+      <!-- KPI Summary -->
+      <div class="kpi-grid" style="margin-bottom: 16px;">
+        <div class="kpi-card">
+          <small>کل مشاورین شناسایی‌شده</small>
+          <strong>${toPersianDigits(stats.totalLeads)}</strong>
+        </div>
+        <div class="kpi-card" style="border-right:4px solid #16a34a;">
+          <small>دارای شماره موبایل (09...)</small>
+          <strong style="color:#16a34a;">${toPersianDigits(stats.withMobile)} شماره</strong>
+        </div>
+        <div class="kpi-card" style="border-right:4px solid #dc2626;">
+          <small>مشاورین یکتای دیوار</small>
+          <strong>${toPersianDigits(stats.divarAgents)} مشاور</strong>
+        </div>
+        <div class="kpi-card" style="border-right:4px solid #0284c7;">
+          <small>انتقال‌یافته به صف بله/واتس‌اپ</small>
+          <strong>${toPersianDigits(stats.importedCount)} نفر</strong>
+        </div>
+      </div>
+
+      <div class="form-section-grid" style="margin-bottom: 18px;">
+        <!-- Automated Crawler Control Card -->
+        <div class="card">
+          <h2 style="font-size:1.12rem; font-weight:900; margin-bottom:8px;">
+            🤖 موتور استخراج خودکار مشاورین مناطق بالای خیابان انقلاب (مناطق ۱ تا ۸)
+          </h2>
+          <p style="font-size:0.84rem; color:var(--text-secondary); margin-bottom:12px;">
+            ربات به‌صورت خودکار محله‌به‌محله صفحات عمومی <strong>وب و دایرکتوری‌های املاک</strong> (برای شماره‌های موبایل آزاد) و آگهی‌های فروش آپارتمان <strong>دیوار</strong> (برای فهرست مشاورین فعال یکتا و شماره‌های داخل متن آگهی) را پیمایش کرده و شماره‌ها را مستقیم وارد صف ارسال می‌کند.
+          </p>
+
+          <div class="field" style="margin-bottom:12px;">
+            <label>۱. انتخاب مناطق هدف (از خیابان انقلاب به بالا):</label>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap:6px; margin-top:6px;">
+              ${districtsCatalog
+                .map(
+                  (d) => `
+                <label style="display:flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid var(--border-medium); border-radius:8px; background:#fff; font-size:0.8rem; cursor:pointer;">
+                  <input type="checkbox" name="discDistrict" value="${escapeHtml(d.id)}" ${
+                    selectedDiscoveryDistricts.includes(d.id) ? 'checked' : ''
+                  } />
+                  <span>${escapeHtml(d.title)}</span>
+                </label>
+              `
+                )
+                .join('')}
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom:12px;">
+            <label>۲. حالت موتور استخراج:</label>
+            <select id="discoveryModeSelect" style="padding:8px; border:1px solid var(--border-medium); border-radius:8px; width:100%;">
+              <option value="both" ${selectedDiscoveryMode === 'both' ? 'selected' : ''}>ترکیبی (پیشنهادی): هم شماره‌های عمومی وب + هم لیست مشاورین یکتای دیوار</option>
+              <option value="web" ${selectedDiscoveryMode === 'web' ? 'selected' : ''}>فقط استخراج شماره‌های موبایل عمومی وب و دایرکتوری‌ها</option>
+              <option value="divar" ${selectedDiscoveryMode === 'divar' ? 'selected' : ''}>فقط پایش مشاورین فعال و یکتای دیوار</option>
+            </select>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            ${
+              isRunning
+                ? `<button type="button" class="btn btn-danger btn-sm" id="stopDiscoveryBtn">⏹ توقف استخراج خودکار</button>`
+                : `<button type="button" class="btn btn-primary btn-sm" id="startDiscoveryBtn">🚀 شروع استخراج خودکار</button>`
+            }
+            <button type="button" class="btn btn-gold btn-sm" id="pushDiscoveredToOutreachBtn">
+              📤 انتقال همه شماره‌دارها به صف بله و واتس‌اپ
+            </button>
+            <a href="/api/outreach/discovery/export.csv" class="btn btn-outline btn-sm" target="_blank">
+              📥 دانلود فایل اکسل (CSV)
+            </a>
+          </div>
+
+          <!-- Live Job Progress Box -->
+          <div id="discoveryJobBox" style="margin-top:14px; padding:12px; border-radius:10px; border:1px solid var(--border-medium); background:var(--bg-canvas); font-size:0.82rem;">
+            ${
+              latestJob
+                ? `
+                  <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                    <strong>وضعیت: ${escapeHtml(latestJob.progress_label || latestJob.status)}</strong>
+                    <span>صفحات بررسی‌شده: <strong>${toPersianDigits(latestJob.pages_scanned || 0)}</strong> | یافت‌شده: <strong>${toPersianDigits(latestJob.leads_found || 0)}</strong> (${toPersianDigits(latestJob.phones_found || 0)} موبایل)</span>
+                  </div>
+                  ${
+                    Array.isArray(latestJob.logs) && latestJob.logs.length > 0
+                      ? `<div style="max-height:110px; overflow-y:auto; background:#fff; padding:8px; border-radius:6px; border:1px solid var(--border-light); font-size:0.76rem; line-height:1.7;">${latestJob.logs
+                          .slice()
+                          .reverse()
+                          .map((l) => `<div>${escapeHtml(l)}</div>`)
+                          .join('')}</div>`
+                      : ''
+                  }
+                `
+                : `<div style="color:var(--text-muted);">هنوز عملیات استخراجی اجرا نشده است. مناطق مورد نظر را انتخاب کرده و روی «🚀 شروع استخراج خودکار» کلیک کنید.</div>`
+            }
+          </div>
+        </div>
+
+        <!-- AI Raw Text / Directory Parser Card -->
+        <form class="card" id="aiTextParseForm">
+          <h2 style="font-size:1.1rem; font-weight:900; margin-bottom:8px;">
+            🧠 استخراج‌گر هوشمند متن آزاد (هوش مصنوعی + پارسر شماره)
+          </h2>
+          <p style="font-size:0.83rem; color:var(--text-secondary); margin-bottom:10px;">
+            اگر متن نامرتبی از صفحات وب، کانال‌های تلگرام/بله املاک، یا فهرست آژانس‌ها کپی کرده‌اید، اینجا بچسبانید تا هوش مصنوعی به‌صورت خودکار <strong>نام مشاور، نام املاک، منطقه و شماره موبایل</strong> را بیرون بکشد و به صف اضافه کند:
+          </p>
+          <div class="field" style="margin-bottom:10px;">
+            <label>منطقه پیش‌فرض متن:</label>
+            <select id="aiParseDefaultDistrict" style="padding:7px; border:1px solid var(--border-medium); border-radius:8px; width:100%;">
+              ${[1, 2, 3, 4, 5, 6, 7, 8]
+                .map((n) => `<option value="منطقه ${n}">منطقه ${toPersianDigits(n)}</option>`)
+                .join('')}
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <textarea id="aiParseTextarea" rows="6" placeholder="متن کپی‌شده از سایت‌ها یا آگهی‌ها را اینجا بچسبانید..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-outline" style="width:100%;">✨ استخراج خودکار مشخصات و شماره‌ها</button>
+        </form>
+      </div>
+
+      <!-- Discovered Leads Table -->
+      <div class="card">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            ${[
+              ['all', 'همه موارد'],
+              ['with_phone', '📱 دارای شماره موبایل'],
+              ['divar_unique', '🏠 مشاورین یکتای دیوار'],
+              ['without_phone', 'بدون موبایل (آماده تکمیل از دیوار)'],
+            ]
+              .map(
+                ([k, lbl]) => `
+              <button type="button" class="btn btn-sm ${discoveryFilter === k ? 'btn-primary' : 'btn-outline'}" data-disc-filter="${k}">${lbl}</button>
+            `
+              )
+              .join('')}
+          </div>
+
+          <form id="discoverySearchForm" style="display:flex; gap:6px;">
+            <input type="text" id="discoverySearchInput" value="${escapeHtml(discoverySearch)}" placeholder="جستجوی نام، املاک، محله..." style="padding:6px 10px; border:1px solid var(--border-medium); border-radius:8px;" />
+            <button type="submit" class="btn btn-outline btn-sm">فیلتر</button>
+          </form>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>منبع</th>
+                <th>نام مشاور</th>
+                <th>نام دفتر املاک</th>
+                <th>منطقه / محله</th>
+                <th>شماره موبایل (09...)</th>
+                <th>لینک / ثبت سریع</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                leads.length === 0
+                  ? `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">موردی یافت نشد.</td></tr>`
+                  : leads
+                      .map(
+                        (r) => `
+                    <tr data-disc-row="${r.id}">
+                      <td>
+                        <span class="tag ${r.source === 'divar' ? '' : 'olive'}" style="font-size:0.72rem;">
+                          ${r.source === 'divar' ? `دیوار (${toPersianDigits(r.active_ads_count)} آگهی)` : 'وب عمومی'}
+                        </span>
+                      </td>
+                      <td>
+                        <input type="text" class="disc-name" value="${escapeHtml(r.full_name || '')}" placeholder="نام مشاور..." style="width:135px; padding:5px; border:1px solid var(--border-light); border-radius:6px;" />
+                      </td>
+                      <td>
+                        <input type="text" class="disc-agency" value="${escapeHtml(r.agency_name || '')}" placeholder="نام املاک..." style="width:140px; padding:5px; border:1px solid var(--border-light); border-radius:6px;" />
+                      </td>
+                      <td>
+                        <strong>${escapeHtml(r.district)}</strong>
+                        <div style="font-size:0.76rem; color:var(--text-secondary);">${escapeHtml(r.neighborhood || '')}</div>
+                      </td>
+                      <td>
+                        <input type="tel" class="disc-phone ltr" value="${escapeHtml(r.phone || '')}" placeholder="0912..." style="width:125px; padding:5px; border:1px solid ${
+                          r.phone ? '#86efac' : 'var(--border-medium)'
+                        }; border-radius:6px;" />
+                        ${r.landline ? `<div class="ltr" style="font-size:0.72rem; color:var(--text-muted);">ثابت: ${escapeHtml(r.landline)}</div>` : ''}
+                      </td>
+                      <td>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                          <button type="button" class="btn btn-primary btn-sm save-disc-lead-btn">ذخیره در صف</button>
+                          ${
+                            r.listing_url
+                              ? `<a href="${escapeHtml(r.listing_url)}" target="_blank" class="btn btn-outline btn-sm" title="${escapeHtml(r.listing_title || '')}">مشاهده منبع ↗</a>`
+                              : ''
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    subContainer.querySelectorAll('input[name="discDistrict"]').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        selectedDiscoveryDistricts = Array.from(
+          subContainer.querySelectorAll('input[name="discDistrict"]:checked')
+        ).map((el) => el.value);
+      });
+    });
+
+    document.getElementById('discoveryModeSelect')?.addEventListener('change', (e) => {
+      selectedDiscoveryMode = e.target.value;
+    });
+
+    document.getElementById('startDiscoveryBtn')?.addEventListener('click', async () => {
+      try {
+        const districts = Array.from(
+          subContainer.querySelectorAll('input[name="discDistrict"]:checked')
+        ).map((el) => el.value);
+        const mode = document.getElementById('discoveryModeSelect').value;
+        const res = await apiFetch('/api/outreach/discovery/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode, districts, autoImportToOutreach: true }),
+        });
+        showToast(res.message, 'success');
+        await renderDiscoverySubTab(subContainer, rootContainer);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('stopDiscoveryBtn')?.addEventListener('click', async () => {
+      try {
+        const res = await apiFetch('/api/outreach/discovery/stop', { method: 'POST' });
+        showToast(res.message, 'info');
+        setTimeout(() => renderDiscoverySubTab(subContainer, rootContainer), 1200);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('pushDiscoveredToOutreachBtn')?.addEventListener('click', async () => {
+      try {
+        const res = await apiFetch('/api/outreach/discovery/import-to-outreach', { method: 'POST' });
+        showToast(res.message, 'success');
+        renderOutreachAdminTab(rootContainer);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('aiTextParseForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rawText = document.getElementById('aiParseTextarea').value.trim();
+      const defaultDistrict = document.getElementById('aiParseDefaultDistrict').value;
+      if (!rawText) return;
+      try {
+        showToast('در حال استخراج هوشمند مشخصات و شماره‌ها...', 'info');
+        const res = await apiFetch('/api/outreach/discovery/parse-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rawText, defaultDistrict, autoImportToOutreach: true }),
+        });
+        showToast(res.message, 'success');
+        document.getElementById('aiParseTextarea').value = '';
+        await renderDiscoverySubTab(subContainer, rootContainer);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    subContainer.querySelectorAll('[data-disc-filter]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        discoveryFilter = btn.dataset.discFilter;
+        renderDiscoverySubTab(subContainer, rootContainer);
+      });
+    });
+
+    document.getElementById('discoverySearchForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      discoverySearch = document.getElementById('discoverySearchInput').value.trim();
+      renderDiscoverySubTab(subContainer, rootContainer);
+    });
+
+    subContainer.querySelectorAll('.save-disc-lead-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('tr');
+        const id = row.dataset.discRow;
+        try {
+          const res = await apiFetch(`/api/outreach/discovery/leads/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fullName: row.querySelector('.disc-name').value,
+              agencyName: row.querySelector('.disc-agency').value,
+              phone: row.querySelector('.disc-phone').value,
+            }),
+          });
+          showToast(res.message, 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    // In-place silent progress update while discovery job is running (no page jump!)
+    if (isRunning) {
+      window._discoveryPollTimer = setInterval(async () => {
+        if (activeSubTab !== 'discovery' || !document.getElementById('discoveryJobBox')) {
+          clearInterval(window._discoveryPollTimer);
+          window._discoveryPollTimer = null;
+          return;
+        }
+        try {
+          const nextData = await apiFetch(`/api/outreach/discovery/overview?${qs.toString()}`);
+          const job = nextData.latestJob;
+          const box = document.getElementById('discoveryJobBox');
+          if (box && job) {
+            box.innerHTML = `
+              <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                <strong>وضعیت: ${escapeHtml(job.progress_label || job.status)}</strong>
+                <span>صفحات بررسی‌شده: <strong>${toPersianDigits(job.pages_scanned || 0)}</strong> | یافت‌شده: <strong>${toPersianDigits(job.leads_found || 0)}</strong> (${toPersianDigits(job.phones_found || 0)} موبایل)</span>
+              </div>
+              ${
+                Array.isArray(job.logs) && job.logs.length > 0
+                  ? `<div style="max-height:110px; overflow-y:auto; background:#fff; padding:8px; border-radius:6px; border:1px solid var(--border-light); font-size:0.76rem; line-height:1.7;">${job.logs
+                      .slice()
+                      .reverse()
+                      .map((l) => `<div>${escapeHtml(l)}</div>`)
+                      .join('')}</div>`
+                  : ''
+              }
+            `;
+            if (job.status !== 'running') {
+              clearInterval(window._discoveryPollTimer);
+              window._discoveryPollTimer = null;
+              renderDiscoverySubTab(subContainer, rootContainer);
+            }
+          }
+        } catch {}
+      }, 4000);
+    }
   }
 })();

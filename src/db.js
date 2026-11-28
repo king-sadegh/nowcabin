@@ -243,6 +243,40 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (contact_id) REFERENCES outreach_contacts(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS discovered_leads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dedup_key TEXT NOT NULL UNIQUE,
+    source TEXT NOT NULL DEFAULT 'web' CHECK(source IN ('divar', 'web', 'ai_text')),
+    phone TEXT NOT NULL DEFAULT '',
+    landline TEXT NOT NULL DEFAULT '',
+    full_name TEXT NOT NULL DEFAULT '',
+    agency_name TEXT NOT NULL DEFAULT '',
+    district TEXT NOT NULL DEFAULT 'منطقه 1',
+    neighborhood TEXT NOT NULL DEFAULT '',
+    listing_title TEXT NOT NULL DEFAULT '',
+    listing_url TEXT NOT NULL DEFAULT '',
+    active_ads_count INTEGER NOT NULL DEFAULT 1,
+    imported_to_outreach INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS lead_discovery_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mode TEXT NOT NULL DEFAULT 'both' CHECK(mode IN ('both', 'divar', 'web')),
+    districts_json TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'stopped', 'failed')),
+    progress_label TEXT NOT NULL DEFAULT 'در حال آماده‌سازی...',
+    pages_scanned INTEGER NOT NULL DEFAULT 0,
+    leads_found INTEGER NOT NULL DEFAULT 0,
+    phones_found INTEGER NOT NULL DEFAULT 0,
+    imported_count INTEGER NOT NULL DEFAULT 0,
+    log_json TEXT NOT NULL DEFAULT '[]',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 function getSetting(key, fallback) {

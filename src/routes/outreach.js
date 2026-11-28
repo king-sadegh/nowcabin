@@ -4,6 +4,7 @@ const { db } = require('../db');
 const { requireRole } = require('../auth');
 const { outreachManager } = require('../outreach/outreachManager');
 const { vlessTunnel } = require('../outreach/vlessTunnel');
+const { leadDiscoveryEngine } = require('../outreach/leadDiscovery');
 const { evaluateAgentReply, renderCampaignTemplate } = require('../outreach/ruleEngine');
 
 const router = express.Router();
@@ -439,6 +440,121 @@ router.post('/preview-rule', (req, res) => {
     decision,
     renderedTemplates,
   });
+});
+
+// 13. Automated Lead Discovery (Public Web Phones + Divar Unique Agents for North Tehran Districts 1-8)
+router.get('/discovery/overview', (req, res) => {
+  const data = leadDiscoveryEngine.getDiscoveryOverview({
+    filter: String(req.query.filter || 'all'),
+    district: String(req.query.district || ''),
+    search: String(req.query.search || '').trim(),
+    limit: Number(req.query.limit) || 150,
+  });
+  res.json(data);
+});
+
+router.post('/discovery/start', (req, res) => {
+  try {
+    const job = leadDiscoveryEngine.startDiscoveryJob({
+      mode: req.body?.mode || 'both',
+      districts: req.body?.districts || ['1', '2', '3'],
+      autoImportToOutreach: req.body?.autoImportToOutreach !== false,
+    });
+    res.json({
+      ok: true,
+      job,
+      message: 'موتور استخراج خودکار مشاورین شمال تهران آغاز به کار کرد.',
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/discovery/stop', (_req, res) => {
+  leadDiscoveryEngine.stopActiveJob();
+  res.json({ ok: true, message: 'درخواست توقف عملیات استخراج ثبت شد.' });
+});
+
+router.post('/discovery/parse-text', async (req, res) => {
+  const rawText = String(req.body?.rawText || '').trim();
+  const defaultDistrict = String(req.body?.defaultDistrict || 'منطقه 1').trim();
+  if (!rawText) {
+    return res.status(400).json({ error: 'لطفاً متن یا محتوای کپی‌شده را وارد کنید.' });
+  }
+  const result = await leadDiscoveryEngine.parseCustomTextWithAI(rawText, {
+    defaultDistrict,
+    autoImportToOutreach: req.body?.autoImportToOutreach !== false,
+  });
+  res.json({
+    ...result,
+    message: `${result.saved} مشاور جدید (${result.phones} شماره موبایل) با موفقیت استخراج شد.`,
+  });
+});
+
+router.post('/discovery/import-to-outreach', (_req, res) => {
+  const resImport = leadDiscoveryEngine.importAllMobileLeadsToOutreach();
+  res.json({
+    ...resImport,
+    message: `${resImport.imported} شماره موبایل جدید به صف کمپین بله و واتس‌اپ اضافه شد.`,
+  });
+});
+
+router.patch('/discovery/leads/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM discovered_leads WHERE id = ?').get(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'ردیف مورد نظر یافت نشد.' });
+  }
+  const phone = req.body?.phone ? config.normalizePhone(req.body.phone) : existing.phone;
+  if (req.body?.phone && !config.isValidIranMobile(phone)) {
+    return res.status(400).json({ error: 'شماره موبایل معتبر وارد کنید (09...).' });
+  }
+  const fullName = req.body?.fullName !== undefined ? String(req.body.fullName).trim() : existing.full_name;
+  const agencyName = req.body?.agencyName !== undefined ? String(req.body.agencyName).trim() : existing.agency_name;
+  const district = req.body?.district !== undefined ? String(req.body.district).trim() : existing.district;
+
+  db.prepare(`
+    UPDATE discovered_leads
+    SET phone = ?, full_name = ?, agency_name = ?, district = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `).run(phone, fullName, agencyName, district, id);
+
+  // If valid phone added to a Divar unique agent, automatically push into outreach_contacts!
+  if (config.isValidIranMobile(phone) && phone !== config.ADMIN_PHONE) {
+    const cExists = db.prepare('SELECT id FROM outreach_contacts WHERE phone = ?').get(phone);
+    if (!cExists) {
+      db.prepare(`
+        INSERT INTO outreach_contacts (phone, full_name, agency_name, district, notes)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(phone, fullName, agencyName, district, `تکمیل شماره مشاور دیوار - ${existing.neighborhood || ''}`);
+    }
+    db.prepare('UPDATE discovered_leads SET imported_to_outreach = 1 WHERE id = ?').run(id);
+  }
+
+  res.json({ ok: true, message: 'اطلاعات مشاور ذخیره و به لیست ارسال اضافه شد.' });
+});
+
+router.get('/discovery/export.csv', (_req, res) => {
+  const rows = db.prepare('SELECT * FROM discovered_leads ORDER BY (CASE WHEN phone != "" THEN 0 ELSE 1 END), id DESC').all();
+  const header = 'phone,full_name,agency_name,district,neighborhood,landline,source,active_ads_count,listing_url';
+  const csvLines = rows.map((r) =>
+    [
+      r.phone,
+      r.full_name,
+      r.agency_name,
+      r.district,
+      r.neighborhood,
+      r.landline,
+      r.source,
+      r.active_ads_count,
+      r.listing_url,
+    ]
+      .map((val) => `"${String(val || '').replace(/"/g, '""')}"`)
+      .join(',')
+  );
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="nokabin_north_tehran_agents.csv"');
+  res.send('\uFEFF' + [header, ...csvLines].join('\n'));
 });
 
 module.exports = router;
