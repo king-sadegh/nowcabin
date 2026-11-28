@@ -33,10 +33,25 @@ app.use(cookieParser());
 app.use(attachUser);
 
 // Static files & uploaded photos (sample-kitchen served from repo public/sample-kitchen)
-app.use('/uploads/sample-kitchen', express.static(path.join(config.ROOT_DIR, 'public', 'sample-kitchen')));
-app.use('/uploads', express.static(config.UPLOADS_DIR));
+app.use(
+  '/uploads/sample-kitchen',
+  express.static(path.join(config.ROOT_DIR, 'public', 'sample-kitchen'), {
+    maxAge: '7d',
+    etag: true,
+  })
+);
+app.use('/uploads', express.static(config.UPLOADS_DIR, { maxAge: '7d', etag: true }));
+app.use(
+  '/assets',
+  express.static(path.join(config.ROOT_DIR, 'public', 'assets'), {
+    maxAge: '7d',
+    etag: true,
+  })
+);
 app.use(
   express.static(path.join(config.ROOT_DIR, 'public'), {
+    maxAge: '1h',
+    etag: true,
     setHeaders(res, filePath) {
       if (filePath.endsWith('.html') || filePath.endsWith('.js')) {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');

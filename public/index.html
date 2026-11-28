@@ -10,8 +10,12 @@
   <link rel="apple-touch-icon" href="/assets/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'" />
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </noscript>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
@@ -126,9 +130,9 @@
       <div class="hero-ba-col">
         <div class="ba-wrapper">
           <div class="ba-slider" data-ba-slider>
-            <img src="/assets/before-1.jpg" alt="قبل از بازسازی کابینت چوبی قدیمی" />
+            <img src="/assets/before-1.jpg" alt="قبل از بازسازی کابینت چوبی قدیمی" fetchpriority="high" decoding="async" />
             <div class="ba-after-layer">
-              <img src="/assets/after-1.jpg" alt="بعد از بازسازی کابینت با رنگ پلی‌اورتان" />
+              <img src="/assets/after-1.jpg" alt="بعد از بازسازی کابینت با رنگ پلی‌اورتان" fetchpriority="high" decoding="async" />
             </div>
             <span class="ba-badge before">قبل</span>
             <span class="ba-badge after">بعد: رنگ پلی‌اورتان</span>
@@ -307,19 +311,19 @@
                   <span>ساده فابریک</span>
                 </button>
                 <button type="button" class="palette-chip cnc-chip" data-cnc-id="shaker" data-title="ابزار CNC قاب ساده (شیکر)">
-                  <img src="/uploads/sample-kitchen/cnc/cnc_shaker.png" alt="طرح CNC شیکر" class="cnc-thumb-icon" />
+                  <img src="/uploads/sample-kitchen/cnc/cnc_shaker.png" alt="طرح CNC شیکر" class="cnc-thumb-icon" loading="lazy" />
                   <span>قاب ساده</span>
                 </button>
                 <button type="button" class="palette-chip cnc-chip" data-cnc-id="beveled" data-title="ابزار CNC قاب دوبل کلاسیک">
-                  <img src="/uploads/sample-kitchen/cnc/cnc_beveled.png" alt="طرح CNC قاب دوبل" class="cnc-thumb-icon" />
+                  <img src="/uploads/sample-kitchen/cnc/cnc_beveled.png" alt="طرح CNC قاب دوبل" class="cnc-thumb-icon" loading="lazy" />
                   <span>قاب دوبل</span>
                 </button>
                 <button type="button" class="palette-chip cnc-chip" data-cnc-id="fluted" data-title="ابزار CNC شیاردار عمودی">
-                  <img src="/uploads/sample-kitchen/cnc/cnc_fluted.png" alt="طرح CNC شیاردار" class="cnc-thumb-icon" />
+                  <img src="/uploads/sample-kitchen/cnc/cnc_fluted.png" alt="طرح CNC شیاردار" class="cnc-thumb-icon" loading="lazy" />
                   <span>شیاردار عمودی</span>
                 </button>
                 <button type="button" class="palette-chip cnc-chip" data-cnc-id="arch" data-title="ابزار CNC قوس‌دار کلاسیک">
-                  <img src="/uploads/sample-kitchen/cnc/cnc_arch.png" alt="طرح CNC قوس‌دار" class="cnc-thumb-icon" />
+                  <img src="/uploads/sample-kitchen/cnc/cnc_arch.png" alt="طرح CNC قوس‌دار" class="cnc-thumb-icon" loading="lazy" />
                   <span>قوس‌دار</span>
                 </button>
               </div>

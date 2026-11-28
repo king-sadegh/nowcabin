@@ -110,11 +110,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return `/uploads/sample-kitchen/wide/coffeebar/${colorId || 'before'}.png`;
   }
 
-  // Preload core images immediately for zero-lag switching
+  // Load only the initial before image immediately; other layers load on-demand (or lazily when idle)
   loadCatalogImage(BASE_BEFORE_IMAGE);
-  Object.values(OVERLAY_URLS).forEach((url) => loadCatalogImage(url));
-  document.querySelectorAll('#catalogOptionsPanel [data-img]').forEach((el) => {
-    if (el.dataset.img) loadCatalogImage(el.dataset.img);
+  const scheduleIdlePreload = window.requestIdleCallback || ((cb) => setTimeout(cb, 2000));
+  scheduleIdlePreload(() => {
+    if (navigator.connection && navigator.connection.saveData) return;
+    document.querySelectorAll('#catalogColorsList [data-img]').forEach((el) => {
+      if (el.dataset.img) loadCatalogImage(el.dataset.img);
+    });
   });
 
   function drawCncDoorGrooves(ctx, x, y, w, h, pattern) {
