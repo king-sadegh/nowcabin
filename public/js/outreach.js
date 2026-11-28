@@ -624,7 +624,7 @@
 
   // ---------------- 2. CONNECTIONS SUB-TAB (WHATSAPP QR + BALE WEB LIVE BROWSER) ----------------
   function renderConnectionsSubTab(subContainer, rootContainer, overview) {
-    const { escapeHtml, showToast, apiFetch } = window.NoKabin;
+    const { escapeHtml, toPersianDigits, showToast, apiFetch } = window.NoKabin;
     const wa = overview.connections.whatsapp;
     const bale = overview.connections.bale;
 
